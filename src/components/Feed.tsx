@@ -99,21 +99,28 @@ export const Feed = () => {
 
   const loadPosts = async () => {
     try {
-      // Load posts first
-      const { data: postsData, error: postsError } = await supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Load posts and beats in parallel
+      const [postsResult, beatsResult] = await Promise.all([
+        supabase
+          .from('posts')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('beats')
+          .select('*')
+          .order('created_at', { ascending: false })
+      ]);
+
+      const { data: postsData, error: postsError } = postsResult;
+      const { data: beatsData, error: beatsError } = beatsResult;
 
       if (postsError) throw postsError;
+      if (beatsError) throw beatsError;
 
-      if (!postsData || postsData.length === 0) {
-        setPosts(mockPosts);
-        return;
-      }
-
-      // Get unique user IDs from posts
-      const userIds = [...new Set(postsData.map(post => post.user_id))];
+      // Get unique user IDs from both posts and beats
+      const postUserIds = postsData?.map(post => post.user_id) || [];
+      const beatUserIds = beatsData?.map(beat => beat.user_id) || [];
+      const userIds = [...new Set([...postUserIds, ...beatUserIds])];
 
       // Load profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
@@ -129,8 +136,8 @@ export const Feed = () => {
         profileMap.set(profile.user_id, profile);
       });
 
-      // Transform the data to match UserPost component expectations
-      const transformedPosts = postsData.map((post: any) => {
+      // Transform posts data
+      const transformedPosts = postsData?.map((post: any) => {
         const profile = profileMap.get(post.user_id);
         return {
           ...post,
@@ -142,16 +149,42 @@ export const Feed = () => {
           likes: post.likes_count || 0,
           comments: post.comments_count || 0
         };
-      });
+      }) || [];
 
-      setPosts(transformedPosts);
+      // Transform beats data to match BeatCard expectations
+      const transformedBeats = beatsData?.map((beat: any) => {
+        const profile = profileMap.get(beat.user_id);
+        return {
+          id: beat.id,
+          title: beat.title || 'Untitled Beat',
+          artist: profile?.display_name || profile?.username || 'Anonymous Artist',
+          avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop&crop=face',
+          coverArt: beat.cover_art_url || beatCover1, // Fallback to default cover
+          bpm: beat.bpm || 120,
+          key: beat.key || 'Unknown',
+          mood: beat.mood || ['Unknown'],
+          description: beat.artist || 'No description available',
+          price: beat.price,
+          likes: beat.likes_count || 0,
+          comments: beat.comments_count || 0,
+          duration: beat.duration ? `${Math.floor(beat.duration / 60)}:${(beat.duration % 60).toString().padStart(2, '0')}` : '0:00',
+          isLiked: false, // TODO: Check if current user liked this beat
+          file_url: beat.file_url
+        };
+      }) || [];
+
+      // Use real data if available, otherwise fallback to mock data
+      setPosts(transformedPosts.length > 0 ? transformedPosts : mockPosts);
+      setBeats(transformedBeats.length > 0 ? transformedBeats : mockBeats);
+
     } catch (error) {
-      console.error('Error loading posts:', error);
+      console.error('Error loading data:', error);
       // Fallback to mock data if database query fails
       setPosts(mockPosts);
+      setBeats(mockBeats);
       toast({
         title: "Using sample data",
-        description: "Loading posts from database failed, showing sample content.",
+        description: "Loading data from database failed, showing sample content.",
       });
     } finally {
       setLoading(false);
