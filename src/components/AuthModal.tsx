@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,37 +25,85 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
     password: '', 
     confirmPassword: '' 
   });
+  const { toast } = useToast();
 
   const handleLogin = async () => {
     setIsLoading(true);
-    // Mock authentication
-    setTimeout(() => {
-      const user = {
-        id: '1',
-        name: 'Music Creator',
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
-      };
-      onAuth(user);
+        password: loginForm.password,
+      });
+
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.user) {
+        onAuth(data.user);
+        onClose();
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully signed in.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-      onClose();
-    }, 1000);
+    }
   };
 
   const handleSignup = async () => {
     setIsLoading(true);
-    // Mock authentication
-    setTimeout(() => {
-      const user = {
-        id: '2',
-        name: signupForm.name,
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email: signupForm.email,
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
-      };
-      onAuth(user);
+        password: signupForm.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            display_name: signupForm.name,
+            username: signupForm.name.toLowerCase().replace(/\s+/g, '_'),
+          }
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Signup Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.user) {
+        onAuth(data.user);
+        onClose();
+        toast({
+          title: "Account Created!",
+          description: "Welcome to Beatify! You can now start sharing your beats.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-      onClose();
-    }, 1000);
+    }
   };
 
   return (

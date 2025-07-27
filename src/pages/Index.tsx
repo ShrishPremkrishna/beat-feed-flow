@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar } from '@/components/Sidebar';
 import { Feed } from '@/components/Feed';
@@ -7,12 +7,85 @@ import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { UserProfile } from '@/components/UserProfile';
 import { AuthModal } from '@/components/AuthModal';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('feed');
   const [showProfile, setShowProfile] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [showAuth, setShowAuth] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        
+        // Fetch user profile if logged in
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        } else {
+          setUserProfile(null);
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      
+      if (session?.user) {
+        setTimeout(() => {
+          fetchUserProfile(session.user.id);
+        }, 0);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return;
+      }
+      
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    setUserProfile(null);
+  };
+
+  // Create navbar user object
+  const navbarUser = userProfile ? {
+    name: userProfile.display_name || userProfile.username || 'User',
+    avatar: userProfile.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
+    notifications: 0 // You can implement notifications later
+  } : undefined;
 
   const renderContent = () => {
     if (showProfile) {
@@ -63,7 +136,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar 
-        currentUser={user}
+        currentUser={navbarUser}
         onProfileClick={() => setShowProfile(!showProfile)}
         onNotificationsClick={() => console.log('Notifications clicked')}
       />
@@ -75,7 +148,7 @@ const Index = () => {
             setCurrentPage(page);
             setShowProfile(false);
           }}
-          onLogout={() => setUser(null)}
+          onLogout={handleLogout}
         />
         
         <main className="flex-1 p-6">

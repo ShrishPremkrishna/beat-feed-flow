@@ -5,6 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PostComposerProps {
   onPost: (post: any) => void;
@@ -16,6 +18,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
   const [content, setContent] = useState('');
   const [beatFile, setBeatFile] = useState<File | null>(null);
   const [coverArt, setCoverArt] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [beatMetadata, setBeatMetadata] = useState({
     title: '',
     bpm: '',
@@ -24,6 +27,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     price: ''
   });
   const [showBeatUpload, setShowBeatUpload] = useState(false);
+  const { toast } = useToast();
 
   const handleFileUpload = (file: File, type: 'beat' | 'cover') => {
     if (type === 'beat') {
@@ -34,31 +38,116 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     }
   };
 
-  const handlePost = () => {
-    const post = {
-      id: Date.now().toString(),
-      content,
-      beat: beatFile ? {
-        file: beatFile,
-        coverArt,
-        ...beatMetadata,
-        mood: beatMetadata.mood.split(',').map(m => m.trim()).filter(Boolean)
-      } : null,
-      timestamp: 'just now',
-      author: {
-        name: "Current User",
-        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"
-      }
-    };
+  const uploadFile = async (file: File, bucket: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
 
-    onPost(post);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, file);
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(fileName);
+
+    return publicUrl;
+  };
+
+  const handlePost = async () => {
+    if (!content.trim() && !beatFile) return;
     
-    // Reset form
-    setContent('');
-    setBeatFile(null);
-    setCoverArt(null);
-    setBeatMetadata({ title: '', bpm: '', key: '', mood: '', price: '' });
-    setShowBeatUpload(false);
+    setIsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to create posts.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create post first
+      const { data: post, error: postError } = await supabase
+        .from('posts')
+        .insert({
+          user_id: user.id,
+          content: content.trim()
+        })
+        .select()
+        .single();
+
+      if (postError) throw postError;
+
+      // Handle beat upload if there's a beat file
+      let beatData = null;
+      if (beatFile) {
+        let coverArtUrl = null;
+        let beatFileUrl = null;
+
+        // Upload cover art if present
+        if (coverArt) {
+          coverArtUrl = await uploadFile(coverArt, 'covers');
+        }
+
+        // Upload beat file
+        beatFileUrl = await uploadFile(beatFile, 'beats');
+
+        // Create beat record
+        const { data: beat, error: beatError } = await supabase
+          .from('beats')
+          .insert({
+            user_id: user.id,
+            post_id: post.id,
+            title: beatMetadata.title || beatFile.name,
+            file_url: beatFileUrl,
+            cover_art_url: coverArtUrl,
+            bpm: beatMetadata.bpm ? parseInt(beatMetadata.bpm) : null,
+            key: beatMetadata.key || null,
+            mood: beatMetadata.mood ? beatMetadata.mood.split(',').map(m => m.trim()).filter(Boolean) : [],
+            price: beatMetadata.price ? parseFloat(beatMetadata.price) : null
+          })
+          .select()
+          .single();
+
+        if (beatError) throw beatError;
+        beatData = beat;
+      }
+
+      // Call onPost callback with the created post
+      onPost({
+        ...post,
+        beat: beatData
+      });
+
+      // Reset form
+      setContent('');
+      setBeatFile(null);
+      setCoverArt(null);
+      setBeatMetadata({ title: '', bpm: '', key: '', mood: '', price: '' });
+      setShowBeatUpload(false);
+
+      toast({
+        title: "Post Created!",
+        description: beatFile ? "Your beat has been shared with the community!" : "Your post has been shared!",
+      });
+
+    } catch (error) {
+      console.error('Error creating post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create post. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -206,10 +295,10 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
 
         <Button
           onClick={handlePost}
-          disabled={!content.trim() && !beatFile}
+          disabled={(!content.trim() && !beatFile) || isLoading}
           className="btn-gradient"
         >
-          {isReply ? 'Reply' : 'Post'}
+          {isLoading ? 'Posting...' : (isReply ? 'Reply' : 'Post')}
         </Button>
       </div>
     </div>
