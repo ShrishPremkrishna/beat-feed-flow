@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
-import { Sidebar } from '@/components/Sidebar';
 import { Feed } from '@/components/Feed';
-import { DiscoverPage } from '@/components/DiscoverPage';
-import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { UserProfile } from '@/components/UserProfile';
 import { AuthModal } from '@/components/AuthModal';
 import { Button } from '@/components/ui/button';
@@ -11,7 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
 const Index = () => {
-  const [currentPage, setCurrentPage] = useState('feed');
   const [showProfile, setShowProfile] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -91,17 +87,7 @@ const Index = () => {
     if (showProfile) {
       return <UserProfile isOwnProfile={true} />;
     }
-
-    switch (currentPage) {
-      case 'feed':
-        return <Feed />;
-      case 'discover':
-        return <DiscoverPage />;
-      case 'analytics':
-        return <AnalyticsDashboard />;
-      default:
-        return <Feed />;
-    }
+    return <Feed />;
   };
 
   if (!user) {
@@ -141,20 +127,9 @@ const Index = () => {
         onNotificationsClick={() => console.log('Notifications clicked')}
       />
       
-      <div className="flex">
-        <Sidebar 
-          currentPage={currentPage}
-          onPageChange={(page) => {
-            setCurrentPage(page);
-            setShowProfile(false);
-          }}
-          onLogout={handleLogout}
-        />
-        
-        <main className="flex-1 p-6">
-          {renderContent()}
-        </main>
-      </div>
+      <main className="p-6">
+        {renderContent()}
+      </main>
     </div>
   );
 };
