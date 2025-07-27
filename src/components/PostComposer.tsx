@@ -260,7 +260,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
             <FileUploadArea
               onFileSelect={(file) => handleFileUpload(file, 'beat')}
               accept="audio/*"
-              maxSize={50}
+              maxSize={200}
               currentFile={beatFile}
               onRemoveFile={() => {
                 setBeatFile(null);
@@ -379,7 +379,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
             <FileUploadArea
               onFileSelect={(file) => handleFileUpload(file, 'beat')}
               accept="audio/*"
-              maxSize={50}
+              maxSize={200}
               currentFile={beatFile}
               onRemoveFile={() => {
                 setBeatFile(null);

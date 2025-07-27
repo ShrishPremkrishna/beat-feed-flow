@@ -16,7 +16,7 @@ interface FileUploadAreaProps {
 export const FileUploadArea = ({
   onFileSelect,
   accept,
-  maxSize = 50,
+  maxSize = 200,
   currentFile,
   onRemoveFile,
   isRequired = false,
