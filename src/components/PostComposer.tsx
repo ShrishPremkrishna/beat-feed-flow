@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { FileUploadArea } from '@/components/FileUploadArea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -256,9 +257,19 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
         )}
         {isReply && (
           <div className="flex-1">
-            <p className="text-muted-foreground text-sm py-2">
-              Reply to this post with a beat
-            </p>
+            <FileUploadArea
+              onFileSelect={(file) => handleFileUpload(file, 'beat')}
+              accept="audio/*"
+              maxSize={50}
+              currentFile={beatFile}
+              onRemoveFile={() => {
+                setBeatFile(null);
+                setShowBeatUpload(false);
+              }}
+              isRequired={true}
+              title="Upload Beat for Reply"
+              description="Drag and drop your beat here or click to browse"
+            />
           </div>
         )}
       </div>
@@ -353,19 +364,31 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       {/* Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <input
-            type="file"
-            accept="audio/*"
-            onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'beat')}
-            className="hidden"
-            id="beat-upload"
-          />
-          <label htmlFor="beat-upload">
-            <Button variant="ghost" size="sm" className="cursor-pointer">
+          {!isReply && !showBeatUpload && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowBeatUpload(true)}
+            >
               <Upload className="w-4 h-4 mr-2" />
-              {isReply ? 'Upload Beat' : 'Beat'}
+              Beat
             </Button>
-          </label>
+          )}
+
+          {!isReply && showBeatUpload && !beatFile && (
+            <FileUploadArea
+              onFileSelect={(file) => handleFileUpload(file, 'beat')}
+              accept="audio/*"
+              maxSize={50}
+              currentFile={beatFile}
+              onRemoveFile={() => {
+                setBeatFile(null);
+                setShowBeatUpload(false);
+              }}
+              title="Upload Beat"
+              description="Drag and drop your beat here or click to browse"
+            />
+          )}
 
           {!isReply && (
             <>
