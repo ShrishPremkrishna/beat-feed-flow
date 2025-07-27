@@ -26,7 +26,8 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					glow: 'hsl(var(--primary-glow))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -61,7 +62,26 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Music-specific colors
+				beat: {
+					card: 'hsl(var(--beat-card))',
+					hover: 'hsl(var(--beat-hover))'
+				},
+				ai: 'hsl(var(--ai-highlight))',
+				success: 'hsl(var(--success))',
+				warning: 'hsl(var(--warning))'
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-accent': 'var(--gradient-accent)',
+				'gradient-card': 'var(--gradient-card)',
+				'gradient-ai': 'var(--gradient-ai)'
+			},
+			boxShadow: {
+				'glow': 'var(--shadow-glow)',
+				'beat': 'var(--shadow-beat)',
+				'ai': 'var(--shadow-ai)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,11 +104,27 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'waveform': {
+					'0%, 100%': { height: '4px' },
+					'50%': { height: '20px' }
+				},
+				'postPulse': {
+					'0%, 100%': { 
+						background: 'var(--gradient-card)',
+						boxShadow: 'var(--shadow-beat)'
+					},
+					'50%': { 
+						background: 'var(--gradient-primary)',
+						boxShadow: 'var(--shadow-glow)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'waveform': 'waveform 1.5s ease-in-out infinite',
+				'post-pulse': 'postPulse 2s ease-in-out infinite'
 			}
 		}
 	},
