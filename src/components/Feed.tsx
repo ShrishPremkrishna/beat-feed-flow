@@ -108,6 +108,7 @@ export const Feed = () => {
         supabase
           .from('beats')
           .select('*')
+          .not('post_id', 'is', null) // Only get beats that are attached to posts (not replies)
           .order('created_at', { ascending: false })
       ]);
 
