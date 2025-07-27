@@ -120,9 +120,21 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
         beatData = beat;
       }
 
-      // Call onPost callback with the created post
+      // Get user profile for author info
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, username, avatar_url')
+        .eq('user_id', user.id)
+        .single();
+
+      // Call onPost callback with the created post and author info
       onPost({
         ...post,
+        author: {
+          name: profile?.display_name || profile?.username || 'Anonymous User',
+          avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+        },
+        timestamp: 'just now',
         beat: beatData
       });
 

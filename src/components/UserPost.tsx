@@ -36,12 +36,12 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <img 
-            src={post.author.avatar} 
-            alt={post.author.name}
+            src={post.author?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'} 
+            alt={post.author?.name || 'User'}
             className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
           />
           <div>
-            <h3 className="font-semibold text-foreground">{post.author.name}</h3>
+            <h3 className="font-semibold text-foreground">{post.author?.name || 'Anonymous User'}</h3>
             <p className="text-sm text-muted-foreground">{post.timestamp}</p>
           </div>
         </div>
@@ -106,13 +106,13 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
           {replies.map((reply, index) => (
             <div key={index} className="flex gap-3">
               <img 
-                src={reply.author.avatar} 
-                alt={reply.author.name}
+                src={reply.author?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'} 
+                alt={reply.author?.name || 'User'}
                 className="w-8 h-8 rounded-full object-cover border border-primary/20"
               />
               <div className="flex-1 bg-muted rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm">{reply.author.name}</span>
+                  <span className="font-medium text-sm">{reply.author?.name || 'Anonymous User'}</span>
                   <span className="text-xs text-muted-foreground">just now</span>
                 </div>
                 <p className="text-sm">{reply.content}</p>

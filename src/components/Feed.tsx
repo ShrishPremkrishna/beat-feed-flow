@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BeatCard } from './BeatCard';
 import { PostComposer } from './PostComposer';
 import { UserPost } from './UserPost';
 import { Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import beatCover1 from '@/assets/beat-cover-1.jpg';
 import beatCover2 from '@/assets/beat-cover-2.jpg';
 import beatCover3 from '@/assets/beat-cover-3.jpg';
@@ -86,8 +88,56 @@ const mockPosts = [
 ];
 
 export const Feed = () => {
-  const [posts, setPosts] = useState(mockPosts);
+  const [posts, setPosts] = useState<any[]>([]);
   const [beats, setBeats] = useState(mockBeats);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadPosts();
+  }, []);
+
+  const loadPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles!posts_user_id_fkey (
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform the data to match UserPost component expectations
+      const transformedPosts = data?.map((post: any) => ({
+        ...post,
+        author: {
+          name: post.profiles?.display_name || post.profiles?.username || 'Anonymous User',
+          avatar: post.profiles?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+        },
+        timestamp: new Date(post.created_at).toLocaleString(),
+        likes: post.likes_count || 0,
+        comments: post.comments_count || 0
+      })) || [];
+
+      setPosts(transformedPosts);
+    } catch (error) {
+      console.error('Error loading posts:', error);
+      // Fallback to mock data if database query fails
+      setPosts(mockPosts);
+      toast({
+        title: "Using sample data",
+        description: "Loading posts from database failed, showing sample content.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNewPost = (post: any) => {
     setPosts(prev => [post, ...prev]);
