@@ -6,6 +6,7 @@ import { DiscoverPage } from '@/components/DiscoverPage';
 import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { UserProfile } from '@/components/UserProfile';
 import { AuthModal } from '@/components/AuthModal';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('feed');
@@ -41,12 +42,13 @@ const Index = () => {
             <p className="text-xl text-muted-foreground max-w-md">
               The social platform where music creators connect, share beats, and discover new collaborations
             </p>
-            <button 
+            <Button 
               onClick={() => setShowAuth(true)}
-              className="btn-gradient px-8 py-3 rounded-xl text-lg font-semibold"
+              size="lg"
+              className="btn-gradient px-8 py-3 text-lg font-semibold"
             >
               Join the Community
-            </button>
+            </Button>
           </div>
         </div>
         <AuthModal 
