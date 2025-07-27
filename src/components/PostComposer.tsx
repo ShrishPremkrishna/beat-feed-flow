@@ -44,7 +44,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
         ...beatMetadata,
         mood: beatMetadata.mood.split(',').map(m => m.trim()).filter(Boolean)
       } : null,
-      timestamp: new Date(),
+      timestamp: 'just now',
       author: {
         name: "Current User",
         avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"
