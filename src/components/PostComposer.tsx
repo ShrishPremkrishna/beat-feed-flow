@@ -12,9 +12,10 @@ interface PostComposerProps {
   onPost: (post: any) => void;
   placeholder?: string;
   isReply?: boolean;
+  parentPostId?: string;
 }
 
-export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share a beat or ask for collaboration...", isReply = false }: PostComposerProps) => {
+export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share a beat or ask for collaboration...", isReply = false, parentPostId }: PostComposerProps) => {
   const [content, setContent] = useState('');
   const [beatFile, setBeatFile] = useState<File | null>(null);
   const [coverArt, setCoverArt] = useState<File | null>(null);
@@ -73,70 +74,112 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
         return;
       }
 
-      // Create post first
-      const { data: post, error: postError } = await supabase
-        .from('posts')
-        .insert({
-          user_id: user.id,
-          content: content.trim()
-        })
-        .select()
-        .single();
-
-      if (postError) throw postError;
-
-      // Handle beat upload if there's a beat file
-      let beatData = null;
-      if (beatFile) {
-        let coverArtUrl = null;
-        let beatFileUrl = null;
-
-        // Upload cover art if present
-        if (coverArt) {
-          coverArtUrl = await uploadFile(coverArt, 'covers');
-        }
-
-        // Upload beat file
-        beatFileUrl = await uploadFile(beatFile, 'beats');
-
-        // Create beat record
-        const { data: beat, error: beatError } = await supabase
-          .from('beats')
+      if (isReply && parentPostId) {
+        // Create a comment instead of a post
+        const { data: comment, error: commentError } = await supabase
+          .from('comments')
           .insert({
             user_id: user.id,
-            post_id: post.id,
-            title: beatMetadata.title || beatFile.name,
-            file_url: beatFileUrl,
-            cover_art_url: coverArtUrl,
-            bpm: beatMetadata.bpm ? parseInt(beatMetadata.bpm) : null,
-            key: beatMetadata.key || null,
-            mood: beatMetadata.mood ? beatMetadata.mood.split(',').map(m => m.trim()).filter(Boolean) : [],
-            price: beatMetadata.price ? parseFloat(beatMetadata.price) : null
+            post_id: parentPostId,
+            content: content.trim()
           })
           .select()
           .single();
 
-        if (beatError) throw beatError;
-        beatData = beat;
+        if (commentError) throw commentError;
+
+        // Get user profile for author info
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, username, avatar_url')
+          .eq('user_id', user.id)
+          .single();
+
+        // Call onPost callback with the created comment
+        onPost({
+          ...comment,
+          author: {
+            name: profile?.display_name || profile?.username || 'Anonymous User',
+            avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+          },
+          timestamp: 'just now'
+        });
+
+        toast({
+          title: "Reply Posted!",
+          description: "Your reply has been added to the conversation.",
+        });
+      } else {
+        // Create post first (original logic)
+        const { data: post, error: postError } = await supabase
+          .from('posts')
+          .insert({
+            user_id: user.id,
+            content: content.trim()
+          })
+          .select()
+          .single();
+
+        if (postError) throw postError;
+
+        // Handle beat upload if there's a beat file
+        let beatData = null;
+        if (beatFile) {
+          let coverArtUrl = null;
+          let beatFileUrl = null;
+
+          // Upload cover art if present
+          if (coverArt) {
+            coverArtUrl = await uploadFile(coverArt, 'covers');
+          }
+
+          // Upload beat file
+          beatFileUrl = await uploadFile(beatFile, 'beats');
+
+          // Create beat record
+          const { data: beat, error: beatError } = await supabase
+            .from('beats')
+            .insert({
+              user_id: user.id,
+              post_id: post.id,
+              title: beatMetadata.title || beatFile.name,
+              file_url: beatFileUrl,
+              cover_art_url: coverArtUrl,
+              bpm: beatMetadata.bpm ? parseInt(beatMetadata.bpm) : null,
+              key: beatMetadata.key || null,
+              mood: beatMetadata.mood ? beatMetadata.mood.split(',').map(m => m.trim()).filter(Boolean) : [],
+              price: beatMetadata.price ? parseFloat(beatMetadata.price) : null
+            })
+            .select()
+            .single();
+
+          if (beatError) throw beatError;
+          beatData = beat;
+        }
+
+        // Get user profile for author info
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, username, avatar_url')
+          .eq('user_id', user.id)
+          .single();
+
+        // Call onPost callback with the created post and author info
+        onPost({
+          ...post,
+          author: {
+            name: profile?.display_name || profile?.username || 'Anonymous User',
+            avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+          },
+          timestamp: 'just now',
+          beat: beatData
+        });
+
+        toast({
+          title: "Post Created!",
+          description: beatFile ? "Your beat has been shared with the community!" : "Your post has been shared!",
+        });
       }
-
-      // Get user profile for author info
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name, username, avatar_url')
-        .eq('user_id', user.id)
-        .single();
-
-      // Call onPost callback with the created post and author info
-      onPost({
-        ...post,
-        author: {
-          name: profile?.display_name || profile?.username || 'Anonymous User',
-          avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
-        },
-        timestamp: 'just now',
-        beat: beatData
-      });
 
       // Reset form
       setContent('');
@@ -145,16 +188,11 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       setBeatMetadata({ title: '', bpm: '', key: '', mood: '', price: '' });
       setShowBeatUpload(false);
 
-      toast({
-        title: "Post Created!",
-        description: beatFile ? "Your beat has been shared with the community!" : "Your post has been shared!",
-      });
-
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Error creating post/comment:', error);
       toast({
         title: "Error",
-        description: "Failed to create post. Please try again.",
+        description: `Failed to ${isReply ? 'post reply' : 'create post'}. Please try again.`,
         variant: "destructive",
       });
     } finally {
@@ -269,45 +307,48 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
 
       {/* Actions */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <input
-            type="file"
-            accept="audio/*"
-            onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'beat')}
-            className="hidden"
-            id="beat-upload"
-          />
-          <label htmlFor="beat-upload">
-            <Button variant="ghost" size="sm" className="cursor-pointer">
-              <Upload className="w-4 h-4 mr-2" />
-              Beat
-            </Button>
-          </label>
+        {!isReply && (
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept="audio/*"
+              onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'beat')}
+              className="hidden"
+              id="beat-upload"
+            />
+            <label htmlFor="beat-upload">
+              <Button variant="ghost" size="sm" className="cursor-pointer">
+                <Upload className="w-4 h-4 mr-2" />
+                Beat
+              </Button>
+            </label>
 
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'cover')}
-            className="hidden"
-            id="cover-upload"
-          />
-          <label htmlFor="cover-upload">
-            <Button variant="ghost" size="sm" className="cursor-pointer">
-              <ImageIcon className="w-4 h-4 mr-2" />
-              Cover
-            </Button>
-          </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'cover')}
+              className="hidden"
+              id="cover-upload"
+            />
+            <label htmlFor="cover-upload">
+              <Button variant="ghost" size="sm" className="cursor-pointer">
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Cover
+              </Button>
+            </label>
 
-          {coverArt && (
-            <Badge variant="secondary" className="bg-success/20 text-success">
-              Cover uploaded
-            </Badge>
-          )}
-        </div>
+            {coverArt && (
+              <Badge variant="secondary" className="bg-success/20 text-success">
+                Cover uploaded
+              </Badge>
+            )}
+          </div>
+        )}
+        {isReply && <div></div>}
 
         <Button
           onClick={handlePost}
-          disabled={(!content.trim() && !beatFile) || isLoading}
+          disabled={!content.trim() || isLoading}
           className="btn-gradient"
         >
           {isLoading ? 'Posting...' : (isReply ? 'Reply' : 'Post')}

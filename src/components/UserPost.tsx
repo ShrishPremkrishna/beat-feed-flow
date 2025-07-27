@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserPostProps {
   post: {
@@ -24,9 +25,67 @@ interface UserPostProps {
 export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) => {
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [replies, setReplies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleReply = (reply: any) => {
-    setReplies(prev => [...prev, reply]);
+  useEffect(() => {
+    loadComments();
+  }, [post.id]);
+
+  const loadComments = async () => {
+    try {
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('post_id', post.id)
+        .order('created_at', { ascending: true });
+
+      if (commentsError) throw commentsError;
+
+      if (!commentsData || commentsData.length === 0) {
+        setReplies([]);
+        return;
+      }
+
+      // Get unique user IDs from comments
+      const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
+
+      // Load profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username, avatar_url')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id to profile for quick lookup
+      const profileMap = new Map();
+      profilesData?.forEach(profile => {
+        profileMap.set(profile.user_id, profile);
+      });
+
+      // Transform comments with author info
+      const transformedComments = commentsData.map((comment: any) => {
+        const profile = profileMap.get(comment.user_id);
+        return {
+          ...comment,
+          author: {
+            name: profile?.display_name || profile?.username || 'Anonymous User',
+            avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+          },
+          timestamp: new Date(comment.created_at).toLocaleString()
+        };
+      });
+
+      setReplies(transformedComments);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    }
+  };
+
+  const handleReply = async (reply: any) => {
+    // The PostComposer will handle creating the comment in the database
+    // Just reload comments to show the new one
+    await loadComments();
     setShowReplyComposer(false);
   };
 
@@ -96,6 +155,7 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
             onPost={handleReply}
             placeholder="Reply with a beat or comment..."
             isReply={true}
+            parentPostId={post.id}
           />
         </div>
       )}
