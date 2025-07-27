@@ -99,31 +99,50 @@ export const Feed = () => {
 
   const loadPosts = async () => {
     try {
-      const { data, error } = await supabase
+      // Load posts first
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          *,
-          profiles!posts_user_id_fkey (
-            display_name,
-            username,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (postsError) throw postsError;
+
+      if (!postsData || postsData.length === 0) {
+        setPosts(mockPosts);
+        return;
+      }
+
+      // Get unique user IDs from posts
+      const userIds = [...new Set(postsData.map(post => post.user_id))];
+
+      // Load profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username, avatar_url')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id to profile for quick lookup
+      const profileMap = new Map();
+      profilesData?.forEach(profile => {
+        profileMap.set(profile.user_id, profile);
+      });
 
       // Transform the data to match UserPost component expectations
-      const transformedPosts = data?.map((post: any) => ({
-        ...post,
-        author: {
-          name: post.profiles?.display_name || post.profiles?.username || 'Anonymous User',
-          avatar: post.profiles?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
-        },
-        timestamp: new Date(post.created_at).toLocaleString(),
-        likes: post.likes_count || 0,
-        comments: post.comments_count || 0
-      })) || [];
+      const transformedPosts = postsData.map((post: any) => {
+        const profile = profileMap.get(post.user_id);
+        return {
+          ...post,
+          author: {
+            name: profile?.display_name || profile?.username || 'Anonymous User',
+            avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+          },
+          timestamp: new Date(post.created_at).toLocaleString(),
+          likes: post.likes_count || 0,
+          comments: post.comments_count || 0
+        };
+      });
 
       setPosts(transformedPosts);
     } catch (error) {
