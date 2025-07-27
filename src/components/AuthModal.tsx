@@ -58,7 +58,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md beat-card border-2 border-primary/20">
+      <DialogContent className="sm:max-w-md bg-card border-2 border-primary/20 fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] z-[9999]">
         <DialogHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
