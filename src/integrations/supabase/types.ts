@@ -88,7 +88,7 @@ export type Database = {
       comments: {
         Row: {
           beat_id: string | null
-          content: string
+          content: string | null
           created_at: string
           id: string
           post_id: string | null
@@ -97,7 +97,7 @@ export type Database = {
         }
         Insert: {
           beat_id?: string | null
-          content: string
+          content?: string | null
           created_at?: string
           id?: string
           post_id?: string | null
@@ -106,7 +106,7 @@ export type Database = {
         }
         Update: {
           beat_id?: string | null
-          content?: string
+          content?: string | null
           created_at?: string
           id?: string
           post_id?: string | null

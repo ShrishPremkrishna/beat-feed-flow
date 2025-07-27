@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
+import { BeatPlayer } from './BeatPlayer';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserPostProps {
@@ -35,7 +36,18 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
     try {
       const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select('*')
+        .select(`
+          *,
+          beats (
+            id,
+            title,
+            artist,
+            file_url,
+            bpm,
+            key,
+            mood
+          )
+        `)
         .eq('post_id', post.id)
         .order('created_at', { ascending: true });
 
@@ -63,11 +75,20 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
         profileMap.set(profile.user_id, profile);
       });
 
-      // Transform comments with author info
+      // Transform comments with author info and beat data
       const transformedComments = commentsData.map((comment: any) => {
         const profile = profileMap.get(comment.user_id);
         return {
           ...comment,
+          beat: comment.beats ? {
+            id: comment.beats.id,
+            title: comment.beats.title,
+            artist: comment.beats.artist,
+            file_url: comment.beats.file_url,
+            bpm: comment.beats.bpm,
+            key: comment.beats.key,
+            mood: comment.beats.mood
+          } : null,
           author: {
             name: profile?.display_name || profile?.username || 'Anonymous User',
             avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
@@ -153,7 +174,7 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
         <div className="border-t border-border pt-4">
           <PostComposer 
             onPost={handleReply}
-            placeholder="Reply with a beat or comment..."
+            placeholder="Reply with a beat..."
             isReply={true}
             parentPostId={post.id}
           />
@@ -175,21 +196,22 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
                   <span className="font-medium text-sm">{reply.author?.name || 'Anonymous User'}</span>
                   <span className="text-xs text-muted-foreground">just now</span>
                 </div>
-                <p className="text-sm">{reply.content}</p>
-                {reply.beat && (
-                  <div className="mt-2 p-2 bg-background rounded border border-border">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary/20 rounded flex items-center justify-center">
-                        🎵
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{reply.beat.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {reply.beat.bpm} BPM • {reply.beat.key}
-                        </p>
-                      </div>
-                    </div>
+                {/* Display beat if it's a beat reply */}
+                {reply.beat ? (
+                  <div className="mt-2">
+                    <BeatPlayer
+                      audioUrl={reply.beat.file_url}
+                      title={reply.beat.title}
+                      artist={reply.beat.artist}
+                      bpm={reply.beat.bpm || undefined}
+                      key={reply.beat.key || undefined}
+                      mood={reply.beat.mood || undefined}
+                      className="max-w-md"
+                    />
                   </div>
+                ) : (
+                  /* Display text content for old text replies */
+                  <p className="text-sm">{reply.content}</p>
                 )}
               </div>
             </div>

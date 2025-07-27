@@ -75,13 +75,49 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       }
 
       if (isReply && parentPostId) {
-        // Create a comment instead of a post
+        // For replies, we must have a beat
+        if (!beatFile) {
+          toast({
+            title: "Beat Required",
+            description: "Please upload a beat to reply to this post.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Upload beat file and create beat record
+        let coverArtUrl = null;
+        if (coverArt) {
+          coverArtUrl = await uploadFile(coverArt, 'covers');
+        }
+        const beatFileUrl = await uploadFile(beatFile, 'beats');
+
+        const { data: beat, error: beatError } = await supabase
+          .from('beats')
+          .insert({
+            title: beatMetadata.title || beatFile.name,
+            artist: 'Anonymous',
+            file_url: beatFileUrl,
+            cover_art_url: coverArtUrl,
+            bpm: beatMetadata.bpm ? parseInt(beatMetadata.bpm) : null,
+            key: beatMetadata.key || null,
+            mood: beatMetadata.mood ? beatMetadata.mood.split(',').map(m => m.trim()).filter(Boolean) : [],
+            price: beatMetadata.price ? parseFloat(beatMetadata.price) : null,
+            user_id: user.id
+          })
+          .select()
+          .single();
+
+        if (beatError) throw beatError;
+
+        // Create the comment/reply with beat_id
         const { data: comment, error: commentError } = await supabase
           .from('comments')
           .insert({
+            content: null, // No text content for beat replies
             user_id: user.id,
             post_id: parentPostId,
-            content: content.trim()
+            beat_id: beat.id
           })
           .select()
           .single();
@@ -208,14 +244,23 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
           alt="Your avatar"
           className="w-10 h-10 rounded-full object-cover border-2 border-primary/20"
         />
-        <div className="flex-1">
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder={placeholder}
-            className="min-h-[100px] bg-background border-border resize-none"
-          />
-        </div>
+        {!isReply && (
+          <div className="flex-1">
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder={placeholder}
+              className="min-h-[100px] bg-background border-border resize-none"
+            />
+          </div>
+        )}
+        {isReply && (
+          <div className="flex-1">
+            <p className="text-muted-foreground text-sm py-2">
+              Reply to this post with a beat
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Beat Upload Section */}
@@ -307,51 +352,52 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
 
       {/* Actions */}
       <div className="flex items-center justify-between">
-        {!isReply && (
-          <div className="flex items-center gap-2">
-            <input
-              type="file"
-              accept="audio/*"
-              onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'beat')}
-              className="hidden"
-              id="beat-upload"
-            />
-            <label htmlFor="beat-upload">
-              <Button variant="ghost" size="sm" className="cursor-pointer">
-                <Upload className="w-4 h-4 mr-2" />
-                Beat
-              </Button>
-            </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            accept="audio/*"
+            onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'beat')}
+            className="hidden"
+            id="beat-upload"
+          />
+          <label htmlFor="beat-upload">
+            <Button variant="ghost" size="sm" className="cursor-pointer">
+              <Upload className="w-4 h-4 mr-2" />
+              {isReply ? 'Upload Beat' : 'Beat'}
+            </Button>
+          </label>
 
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'cover')}
-              className="hidden"
-              id="cover-upload"
-            />
-            <label htmlFor="cover-upload">
-              <Button variant="ghost" size="sm" className="cursor-pointer">
-                <ImageIcon className="w-4 h-4 mr-2" />
-                Cover
-              </Button>
-            </label>
+          {!isReply && (
+            <>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'cover')}
+                className="hidden"
+                id="cover-upload"
+              />
+              <label htmlFor="cover-upload">
+                <Button variant="ghost" size="sm" className="cursor-pointer">
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Cover
+                </Button>
+              </label>
+            </>
+          )}
 
-            {coverArt && (
-              <Badge variant="secondary" className="bg-success/20 text-success">
-                Cover uploaded
-              </Badge>
-            )}
-          </div>
-        )}
-        {isReply && <div></div>}
+          {coverArt && (
+            <Badge variant="secondary" className="bg-success/20 text-success">
+              Cover uploaded
+            </Badge>
+          )}
+        </div>
 
         <Button
           onClick={handlePost}
-          disabled={!content.trim() || isLoading}
+          disabled={isReply ? !beatFile || isLoading : (!content.trim() || isLoading)}
           className="btn-gradient"
         >
-          {isLoading ? 'Posting...' : (isReply ? 'Reply' : 'Post')}
+          {isLoading ? 'Posting...' : (isReply ? 'Reply with Beat' : 'Post')}
         </Button>
       </div>
     </div>
