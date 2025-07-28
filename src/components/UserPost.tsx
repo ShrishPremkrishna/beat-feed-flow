@@ -248,6 +248,9 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             comment_id: replyId
           });
       }
+      
+      // Reload comments to get updated like counts from database
+      await loadComments();
     } catch (error) {
       // Revert optimistic update on error
       setReplies(prev => prev.map(reply => 
@@ -365,7 +368,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             className="flex items-center gap-2 text-muted-foreground"
           >
             <MessageCircle className="w-4 h-4" />
-            {post.comments + replies.length}
+            {replies.length}
           </Button>
           
           <Button 
