@@ -110,6 +110,7 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
           post_id,
           beat_id,
           user_id,
+          likes_count,
           beats (
             id,
             title,
@@ -336,14 +337,10 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
               No posts yet
             </div>
           ) : (
-            userPosts.map((postData) => (
-              <div 
-                key={postData.id}
-                className="cursor-pointer hover:bg-muted/50 transition-colors rounded-lg p-1"
-                onClick={() => onPostClick?.(postData.id)}
-              >
-                <UserPost
-                  post={{
+             userPosts.map((postData) => (
+               <div key={postData.id}>
+                 <UserPost
+                   post={{
                     id: postData.id,
                     content: postData.content,
                     author: {
@@ -355,9 +352,16 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
                     comments: postData.comments_count || 0,
                     isLiked: false
                   }}
-                  onLike={() => {}}
-                  onComment={() => {}}
-                  onShare={() => {}}
+                  onLike={() => {
+                    // Handle like functionality - no need to prevent event since UserPost handles it
+                  }}
+                  onComment={() => {
+                    // Handle comment functionality
+                  }}
+                  onShare={() => {
+                    // Handle share functionality
+                  }}
+                  onPostClick={() => onPostClick?.(postData.id)}
                 />
               </div>
             ))
@@ -374,12 +378,15 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
               No replies yet
             </div>
           ) : (
-            userReplies.map((reply) => (
-              <div 
-                key={reply.id} 
-                className="beat-card space-y-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => onPostClick?.(reply.post_id)}
-              >
+             userReplies.map((reply) => (
+               <div 
+                 key={reply.id} 
+                 className="beat-card space-y-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                 onClick={(e) => {
+                   e.preventDefault();
+                   onPostClick?.(reply.post_id);
+                 }}
+               >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0">
                     {currentProfile?.avatar ? (
@@ -419,10 +426,22 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
                           key={reply.beats.key || undefined}
                           mood={reply.beats.mood || undefined}
                           className="p-4"
-                        />
-                      </div>
-                    )}
-                  </div>
+                         />
+                       </div>
+                     )}
+                     
+                     {/* Reply Actions - Show likes */}
+                     <div className="flex items-center gap-4 pt-3 border-t border-border/30 mt-3">
+                       <div className="flex items-center gap-1 text-muted-foreground">
+                         <Heart className="w-4 h-4" />
+                         <span className="text-sm">{reply.likes_count || 0} likes</span>
+                       </div>
+                       <div className="flex items-center gap-1 text-muted-foreground">
+                         <MessageCircle className="w-4 h-4" />
+                         <span className="text-sm">Reply</span>
+                       </div>
+                     </div>
+                   </div>
                 </div>
               </div>
             ))
