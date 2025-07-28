@@ -277,7 +277,6 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
               </span>
             </div>
           )}
-          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-primary rounded-full border-2 border-background"></div>
         </div>
         {!isReply && (
           <div className="flex-1">

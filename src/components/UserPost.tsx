@@ -335,7 +335,6 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                 </span>
               </div>
             )}
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-accent rounded-full border-2 border-background"></div>
           </div>
           <div>
             <h3 

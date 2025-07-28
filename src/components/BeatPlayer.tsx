@@ -27,6 +27,7 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(100);
   const audioRef = useRef<HTMLAudioElement>(null);
+  
 
   useEffect(() => {
     const audio = audioRef.current;
