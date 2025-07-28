@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Camera, Instagram, Twitter, Music, Globe } from 'lucide-react';
+import { InitialsAvatar } from '@/components/ui/initials-avatar';
+import { Camera, Instagram, Twitter, Music, Globe, Volume2, Youtube } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { validateURL, validateSocialHandle, sanitizeText, validateImageFile, rateLimiter } from '@/lib/security';
@@ -32,6 +33,9 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
     instagram: '',
     twitter: '',
     beatstars: '',
+    soundcloud: '',
+    spotify: '',
+    youtube: '',
     avatar_url: ''
   });
 
@@ -46,6 +50,9 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
         instagram: currentProfile.instagram || '',
         twitter: currentProfile.twitter || '',
         beatstars: currentProfile.beatstars || '',
+        soundcloud: currentProfile.soundcloud || '',
+        spotify: currentProfile.spotify || '',
+        youtube: currentProfile.youtube || '',
         avatar_url: currentProfile.avatar_url || ''
       });
     }
@@ -182,6 +189,18 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       errors.beatstars = 'Invalid BeatStars profile name';
     }
 
+    if (formData.soundcloud && !validateSocialHandle(formData.soundcloud, 'beatstars')) {
+      errors.soundcloud = 'Invalid SoundCloud profile name';
+    }
+
+    if (formData.spotify && !validateSocialHandle(formData.spotify, 'beatstars')) {
+      errors.spotify = 'Invalid Spotify profile name';
+    }
+
+    if (formData.youtube && !validateSocialHandle(formData.youtube, 'beatstars')) {
+      errors.youtube = 'Invalid YouTube channel name';
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -228,6 +247,9 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
         instagram: formData.instagram.replace(/^@/, '').trim(),
         twitter: formData.twitter.replace(/^@/, '').trim(),
         beatstars: formData.beatstars.trim(),
+        soundcloud: formData.soundcloud.trim(),
+        spotify: formData.spotify.trim(),
+        youtube: formData.youtube.replace(/^@/, '').trim(),
         avatar_url: formData.avatar_url,
       };
 
@@ -282,12 +304,11 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
           {/* Avatar Upload */}
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={formData.avatar_url} />
-                <AvatarFallback className="text-xl">
-                  {formData.display_name?.charAt(0)?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
+              <InitialsAvatar
+                name={formData.display_name}
+                avatarUrl={formData.avatar_url}
+                size="xl"
+              />
               <label 
                 htmlFor="avatar-upload"
                 className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/80 transition-colors"
@@ -439,6 +460,66 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
                 />
                 {validationErrors.beatstars && (
                   <p className="text-xs text-destructive mt-1">{validationErrors.beatstars}</p>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <Volume2 className="w-5 h-5 text-orange-600" />
+                <Input
+                  value={formData.soundcloud}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, soundcloud: value }));
+                    // Clear validation error on change
+                    if (validationErrors.soundcloud) {
+                      setValidationErrors(prev => ({ ...prev, soundcloud: '' }));
+                    }
+                  }}
+                  placeholder="SoundCloud profile"
+                  className={validationErrors.soundcloud ? 'border-destructive' : ''}
+                />
+                {validationErrors.soundcloud && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.soundcloud}</p>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <Music className="w-5 h-5 text-green-500" />
+                <Input
+                  value={formData.spotify}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, spotify: value }));
+                    // Clear validation error on change
+                    if (validationErrors.spotify) {
+                      setValidationErrors(prev => ({ ...prev, spotify: '' }));
+                    }
+                  }}
+                  placeholder="Spotify artist profile"
+                  className={validationErrors.spotify ? 'border-destructive' : ''}
+                />
+                {validationErrors.spotify && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.spotify}</p>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <Youtube className="w-5 h-5 text-red-500" />
+                <Input
+                  value={formData.youtube}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, youtube: value }));
+                    // Clear validation error on change
+                    if (validationErrors.youtube) {
+                      setValidationErrors(prev => ({ ...prev, youtube: '' }));
+                    }
+                  }}
+                  placeholder="YouTube channel"
+                  className={validationErrors.youtube ? 'border-destructive' : ''}
+                />
+                {validationErrors.youtube && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.youtube}</p>
                 )}
               </div>
             </div>

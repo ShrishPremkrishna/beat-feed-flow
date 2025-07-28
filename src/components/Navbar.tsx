@@ -1,24 +1,42 @@
 import { useState, useEffect } from 'react';
-import { Search, Bell, Settings, LogOut, User, Plus, Music, Headphones, Menu } from 'lucide-react';
+import { Search, Bell, User, Menu, Music, Headphones, LogOut, Home, Heart, Settings, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
+
+import { InitialsAvatar } from '@/components/ui/initials-avatar';
+
 import { createPortal } from 'react-dom';
+
 
 interface NavbarProps {
   onLogoClick?: () => void;
   onUserProfileClick?: (userId: string) => void;
   onUserSearch?: (query: string) => void;
-  onPostClick?: () => void;
-  onSettingsClick?: () => void;
-  onLogout?: () => void;
-  currentUser?: any;
-  userProfile?: any;
+  onUserSelect?: (userId: string) => void;
+  onTabChange?: (tab: 'home' | 'following') => void;
+  activeTab?: 'home' | 'following';
+  currentUser?: {
+    name: string;
+    avatar: string;
+    notifications: number;
+  };
 }
 
-export const Navbar = ({ onLogoClick, onUserProfileClick, onUserSearch, onPostClick, onSettingsClick, onLogout, currentUser, userProfile }: NavbarProps) => {
+export const Navbar = ({ 
+  onProfileClick, 
+  onNotificationsClick, 
+  onLogoClick, 
+  onLogout, 
+  onUserSearch, 
+  onUserSelect, 
+  onTabChange,
+  activeTab = 'home',
+  currentUser 
+}: NavbarProps) => {
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -99,52 +117,51 @@ export const Navbar = ({ onLogoClick, onUserProfileClick, onUserSearch, onPostCl
               </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="flex-1 max-w-md mx-8 relative">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  type="text"
-                  placeholder="Search artists..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
-                  onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
-                  className="pl-10 bg-muted border-muted-foreground/20 focus:border-primary"
-                />
-                
-                {/* Search Results Dropdown */}
-                {isMounted && showSearchResults && searchResults.length > 0 && createPortal(
-                  <div className="fixed top-20 left-1/2 transform -translate-x-1/2 w-96 bg-background border border-border rounded-lg shadow-xl z-[9999]">
-                    {searchResults.map((profile) => (
-                      <div
-                        key={profile.user_id}
-                        onClick={() => handleUserSelect(profile.user_id)}
-                        className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors first:rounded-t-lg last:rounded-b-lg"
-                      >
-                        {profile.avatar_url ? (
-                          <img 
-                            src={profile.avatar_url} 
-                            alt={profile.display_name || profile.username}
-                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-bold">
-                              {(profile.display_name || profile.username || 'U').charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium truncate">{profile.display_name || 'Anonymous'}</div>
-                          <div className="text-sm text-muted-foreground truncate">@{profile.username}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>,
-                  document.body
-                )}
-              </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-6 mx-8">
+            <Button
+              variant={activeTab === 'home' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onTabChange?.('home')}
+              className={`flex items-center gap-2 ${
+                activeTab === 'home' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              Home
+            </Button>
+            <Button
+              variant={activeTab === 'following' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onTabChange?.('following')}
+              className={`flex items-center gap-2 ${
+                activeTab === 'following' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Heart className="w-4 h-4" />
+              Following
+            </Button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="flex-1 max-w-md mx-8 relative">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Search artists..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
+                onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+                className="pl-10 bg-muted border-muted-foreground/20 focus:border-primary"
+              />
+
             </div>
 
             {/* User Profile */}
@@ -196,11 +213,37 @@ export const Navbar = ({ onLogoClick, onUserProfileClick, onUserSearch, onPostCl
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Mobile Menu */}
-              <Button variant="ghost" size="sm" className="md:hidden">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </div>
+            {/* User Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors"
+                >
+                  <InitialsAvatar
+                    name={user.name}
+                    avatarUrl={user.avatar}
+                    size="sm"
+                  />
+                  <span className="font-medium hidden sm:block">{user.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={onProfileClick} className="cursor-pointer">
+                  <User className="w-4 h-4 mr-2" />
+                  View Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Mobile Menu */}
+            <Button variant="ghost" size="sm" className="md:hidden">
+              <Menu className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </nav>

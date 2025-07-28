@@ -264,50 +264,68 @@ export type Database = {
         Row: {
           avatar_url: string | null
           beats_count: number | null
+          beatstars: string | null
           bio: string | null
           created_at: string
           display_name: string | null
           followers_count: number | null
           following_count: number | null
           id: string
+          instagram: string | null
           likes_count: number | null
           location: string | null
+          soundcloud: string | null
+          spotify: string | null
+          twitter: string | null
           updated_at: string
           user_id: string
           username: string
           website: string | null
+          youtube: string | null
         }
         Insert: {
           avatar_url?: string | null
           beats_count?: number | null
+          beatstars?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
           followers_count?: number | null
           following_count?: number | null
           id?: string
+          instagram?: string | null
           likes_count?: number | null
           location?: string | null
+          soundcloud?: string | null
+          spotify?: string | null
+          twitter?: string | null
           updated_at?: string
           user_id: string
           username: string
           website?: string | null
+          youtube?: string | null
         }
         Update: {
           avatar_url?: string | null
           beats_count?: number | null
+          beatstars?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
           followers_count?: number | null
           following_count?: number | null
           id?: string
+          instagram?: string | null
           likes_count?: number | null
           location?: string | null
+          soundcloud?: string | null
+          spotify?: string | null
+          twitter?: string | null
           updated_at?: string
           user_id?: string
           username?: string
           website?: string | null
+          youtube?: string | null
         }
         Relationships: []
       }
