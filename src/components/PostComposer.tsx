@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Upload, Music, X, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +21,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
   const [beatFile, setBeatFile] = useState<File | null>(null);
   const [coverArt, setCoverArt] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [beatMetadata, setBeatMetadata] = useState({
     title: '',
     bpm: '',
@@ -30,6 +31,28 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
   });
   const [showBeatUpload, setShowBeatUpload] = useState(false);
   const { toast } = useToast();
+
+  // Load user profile data
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, username, avatar_url')
+        .eq('user_id', user.id)
+        .single();
+
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
 
   const handleFileUpload = (file: File, type: 'beat' | 'cover') => {
     if (type === 'beat') {
@@ -136,8 +159,8 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
         onPost({
           ...comment,
           author: {
-            name: profile?.display_name || profile?.username || 'Anonymous User',
-            avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+            name: userProfile?.display_name || userProfile?.username || 'Anonymous User',
+            avatar: userProfile?.avatar_url || ''
           },
           timestamp: 'just now'
         });
@@ -205,8 +228,8 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
         onPost({
           ...post,
           author: {
-            name: profile?.display_name || profile?.username || 'Anonymous User',
-            avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+            name: userProfile?.display_name || userProfile?.username || 'Anonymous User',
+            avatar: userProfile?.avatar_url || ''
           },
           timestamp: 'just now',
           beat: beatData
@@ -241,11 +264,19 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     <div className="beat-card space-y-4 animate-fade-in">
       <div className="flex items-start gap-3">
         <div className="relative">
-          <img 
-            src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"
-            alt="Your avatar"
-            className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-glow"
-          />
+          {userProfile?.avatar_url ? (
+            <img 
+              src={userProfile.avatar_url}
+              alt="Your avatar"
+              className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-glow"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-glow flex items-center justify-center">
+              <span className="text-lg font-bold text-muted-foreground">
+                {(userProfile?.display_name || userProfile?.username || 'U').charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
           <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-primary rounded-full border-2 border-background"></div>
         </div>
         {!isReply && (
