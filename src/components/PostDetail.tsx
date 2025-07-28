@@ -418,6 +418,7 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
         <div className="beat-card">
           <PostComposer 
             isReply={true}
+            parentPostId={postId}
             onPost={handleReply}
           />
         </div>
