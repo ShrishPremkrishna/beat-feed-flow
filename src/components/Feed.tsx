@@ -10,7 +10,7 @@ const mockPosts = [
     content: 'Looking for a hard trap beat for my new track! Something dark with heavy 808s. Budget around $100. Drop your beats below! 🔥',
     author: {
       name: 'MC Flow',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+      avatar: ''
     },
     timestamp: '1 hour ago',
     likes: 23,
@@ -22,7 +22,7 @@ const mockPosts = [
     content: 'Just dropped this new lo-fi beat! Perfect for late night vibes ✨ What do you think?',
     author: {
       name: 'Chill Beats',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face'
+      avatar: ''
     },
     timestamp: '3 hours ago',
     likes: 67,
@@ -74,7 +74,7 @@ export const Feed = () => {
           ...post,
           author: {
             name: profile?.display_name || profile?.username || 'Anonymous User',
-            avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+            avatar: profile?.avatar_url || ''
           },
           timestamp: new Date(post.created_at).toLocaleString(),
           likes: post.likes_count || 0,

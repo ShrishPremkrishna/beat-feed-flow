@@ -91,7 +91,7 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
           } : null,
           author: {
             name: profile?.display_name || profile?.username || 'Anonymous User',
-            avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+            avatar: profile?.avatar_url || ''
           },
           timestamp: new Date(comment.created_at).toLocaleString()
         };
@@ -116,11 +116,19 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img 
-              src={post.author?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'} 
-              alt={post.author?.name || 'User'}
-              className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-card"
-            />
+            {post.author?.avatar ? (
+              <img 
+                src={post.author.avatar} 
+                alt={post.author?.name || 'User'}
+                className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-card"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-card flex items-center justify-center">
+                <span className="text-lg font-bold text-muted-foreground">
+                  {(post.author?.name || 'U').charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-accent rounded-full border-2 border-background"></div>
           </div>
           <div>
@@ -195,11 +203,19 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
         <div className="space-y-4 border-t border-border pt-4">
           {replies.map((reply, index) => (
             <div key={index} className="flex gap-3">
-              <img 
-                src={reply.author?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'} 
-                alt={reply.author?.name || 'User'}
-                className="w-8 h-8 rounded-full object-cover border border-primary/20"
-              />
+              {reply.author?.avatar ? (
+                <img 
+                  src={reply.author.avatar} 
+                  alt={reply.author?.name || 'User'}
+                  className="w-8 h-8 rounded-full object-cover border border-primary/20"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-muted border border-primary/20 flex items-center justify-center">
+                  <span className="text-sm font-bold text-muted-foreground">
+                    {(reply.author?.name || 'U').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div className="flex-1 bg-muted rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium text-sm">{reply.author?.name || 'Anonymous User'}</span>
