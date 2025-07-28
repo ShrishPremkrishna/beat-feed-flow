@@ -76,6 +76,10 @@ const Index = () => {
     setUserProfile(null);
   };
 
+  const handleProfileClick = () => {
+    setShowProfile(true);
+  };
+
   // Create navbar user object
   const navbarUser = userProfile ? {
     name: userProfile.display_name || userProfile.username || 'User',
@@ -85,7 +89,35 @@ const Index = () => {
 
   const renderContent = () => {
     if (showProfile) {
-      return <UserProfile isOwnProfile={true} />;
+      return (
+        <UserProfile 
+          user={userProfile ? {
+            name: userProfile.display_name || 'Anonymous User',
+            username: userProfile.username || '@user',
+            avatar: userProfile.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
+            bio: userProfile.bio || 'No bio available',
+            location: userProfile.location || 'Unknown',
+            joinDate: userProfile.created_at ? new Date(userProfile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently',
+            website: userProfile.website || '',
+            social: {
+              instagram: '',
+              twitter: '',
+              beatstars: ''
+            },
+            stats: {
+              followers: userProfile.followers_count || 0,
+              following: userProfile.following_count || 0,
+              beats: userProfile.beats_count || 0,
+              likes: userProfile.likes_count || 0
+            },
+            genres: [],
+            placements: [],
+            rating: 0,
+            isVerified: false
+          } : undefined}
+          isOwnProfile={true}
+        />
+      );
     }
     return <Feed />;
   };
@@ -146,7 +178,7 @@ const Index = () => {
       <div className="navbar">
         <Navbar 
           currentUser={navbarUser}
-          onProfileClick={() => setShowProfile(!showProfile)}
+          onProfileClick={handleProfileClick}
           onNotificationsClick={() => console.log('Notifications clicked')}
         />
       </div>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BeatCard } from './BeatCard';
+import { ProfileEditModal } from './ProfileEditModal';
 
 interface UserProfileProps {
   user?: {
@@ -35,6 +36,8 @@ interface UserProfileProps {
 
 export const UserProfile = ({ user, isOwnProfile = false }: UserProfileProps) => {
   const [isFollowing, setIsFollowing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [currentProfile, setCurrentProfile] = useState(user);
 
   const defaultUser = {
     name: 'BeatMaker Pro',
@@ -61,7 +64,11 @@ export const UserProfile = ({ user, isOwnProfile = false }: UserProfileProps) =>
     isVerified: true
   };
 
-  const profileUser = user || defaultUser;
+  const profileUser = currentProfile || user || defaultUser;
+
+  const handleProfileUpdate = (updatedProfile: any) => {
+    setCurrentProfile(updatedProfile);
+  };
 
   // Mock user beats
   const userBeats = [
@@ -163,7 +170,7 @@ export const UserProfile = ({ user, isOwnProfile = false }: UserProfileProps) =>
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
               {isOwnProfile ? (
-                <Button className="btn-gradient">
+                <Button className="btn-gradient" onClick={() => setShowEditModal(true)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Profile
                 </Button>
@@ -263,6 +270,14 @@ export const UserProfile = ({ user, isOwnProfile = false }: UserProfileProps) =>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Profile Modal */}
+      <ProfileEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        currentProfile={currentProfile || user}
+        onProfileUpdate={handleProfileUpdate}
+      />
     </div>
   );
 };
