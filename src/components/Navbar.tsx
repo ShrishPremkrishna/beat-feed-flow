@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Bell, User, Menu, Music, Headphones, LogOut, Home, Heart, Settings, Plus } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -198,15 +198,7 @@ export const Navbar = ({
 
             {/* User Profile */}
             <div className="flex items-center gap-4">
-              {/* Create Post Button */}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="relative" 
-                onClick={onPostClick}
-              >
-                <Plus className="w-5 h-5" />
-              </Button>
+
 
               {/* User Profile Dropdown */}
               <DropdownMenu>

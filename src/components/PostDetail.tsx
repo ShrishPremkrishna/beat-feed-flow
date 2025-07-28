@@ -356,7 +356,6 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
                 </span>
               </div>
             )}
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-primary rounded-full border-2 border-background"></div>
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
