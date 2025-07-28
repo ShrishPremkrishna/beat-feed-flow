@@ -6,8 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPost } from './UserPost';
 import { ProfileEditModal } from './ProfileEditModal';
 import { BeatPlayer } from './BeatPlayer';
+
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
+
+import { ShareModal } from './ShareModal';
+
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserProfileProps {
   user?: {
@@ -56,8 +61,14 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
   
   const [followersList, setFollowersList] = useState<any[]>([]);
   const [followingList, setFollowingList] = useState<any[]>([]);
+
   const [showFollowersList, setShowFollowersList] = useState(false);
   const [showFollowingList, setShowFollowingList] = useState(false);
+
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const { toast } = useToast();
+
 
   const defaultUser = {
     name: 'BeatMaker Pro',
@@ -349,6 +360,13 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
 
   const handleProfileUpdate = (updatedProfile: any) => {
     setCurrentProfile(updatedProfile);
+  };
+
+  const handleShare = (postId: string) => {
+    // Generate the direct link to the post detail view
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    setShareUrl(postUrl);
+    setShowShareModal(true);
   };
 
   // Show followers/following lists
@@ -680,9 +698,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                   onComment={() => {
                     // Handle comment functionality
                   }}
-                  onShare={() => {
-                    // Handle share functionality
-                  }}
+                  onShare={() => handleShare(postData.id)}
                   onPostClick={() => onPostClick?.(postData.id)}
                 />
               </div>
@@ -773,6 +789,14 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
         onClose={() => setShowEditModal(false)}
         currentProfile={currentProfile || user}
         onProfileUpdate={handleProfileUpdate}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        url={shareUrl}
+        title="Share Post"
       />
     </div>
   );

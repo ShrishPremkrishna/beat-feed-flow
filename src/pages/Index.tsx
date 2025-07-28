@@ -23,7 +23,11 @@ const Index = () => {
   const [viewingUserProfile, setViewingUserProfile] = useState<any>(null);
   const [showBeatSwiper, setShowBeatSwiper] = useState(false);
   const [beatSwiperPostId, setBeatSwiperPostId] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<'home' | 'following'>('home');
+
+  const [profileLoading, setProfileLoading] = useState(false);
+
 
   useEffect(() => {
     let mounted = true;
@@ -107,6 +111,7 @@ const Index = () => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      setProfileLoading(true);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -121,6 +126,8 @@ const Index = () => {
       setUserProfile(data);
     } catch (error) {
       console.error('Error:', error);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -174,13 +181,6 @@ const Index = () => {
   };
 
 
-  const handleProfileClick = () => {
-    setShowProfile(true);
-    setShowPostDetail(false);
-    setHighlightedPostId(null);
-    setViewingUserId(null);
-    setViewingUserProfile(null);
-  };
 
   const handleBackToFeed = () => {
     setShowProfile(false);
@@ -225,14 +225,25 @@ const Index = () => {
   };
 
   const handleUserSelect = async (userId: string) => {
-    // Fetch the selected user's profile and show it
-    const profile = await fetchAnyUserProfile(userId);
-    if (profile) {
-      setViewingUserId(userId);
-      setViewingUserProfile(profile);
+    if (user && userId === user.id) {
+      // Viewing own profile - clear viewing states and refresh own profile data
+      setViewingUserId(null);
+      setViewingUserProfile(null);
       setShowProfile(true);
       setShowPostDetail(false);
       setHighlightedPostId(null);
+      // Refresh current user's profile data
+      await fetchUserProfile(user.id);
+    } else {
+      // Viewing someone else's profile
+      const profile = await fetchAnyUserProfile(userId);
+      if (profile) {
+        setViewingUserId(userId);
+        setViewingUserProfile(profile);
+        setShowProfile(true);
+        setShowPostDetail(false);
+        setHighlightedPostId(null);
+      }
     }
   };
 
@@ -249,7 +260,8 @@ const Index = () => {
   const navbarUser = userProfile ? {
     name: userProfile.display_name || 'User',
     avatar: userProfile.avatar_url || '',
-    notifications: 0
+    notifications: 0,
+    user_id: userProfile.user_id
   } : undefined;
 
   const renderContent = () => {
@@ -272,9 +284,27 @@ const Index = () => {
     }
     
     if (showProfile) {
+      // Show loading state when refreshing own profile
+      if (!viewingUserId && profileLoading) {
+        return (
+          <div className="text-center py-12 text-muted-foreground">
+            Loading profile...
+          </div>
+        );
+      }
+      
       // Determine which profile to show
-      const profileToShow = viewingUserProfile || userProfile;
-      const isOwnProfile = !viewingUserId && userProfile;
+      const profileToShow = viewingUserId ? viewingUserProfile : userProfile;
+      const isOwnProfile = !viewingUserId;
+      
+      // Don't render if we don't have profile data
+      if (!profileToShow) {
+        return (
+          <div className="text-center py-12 text-muted-foreground">
+            Loading profile...
+          </div>
+        );
+      }
       
       return (
         <UserProfile 
@@ -369,14 +399,14 @@ const Index = () => {
       <div className="navbar">
         <Navbar 
           currentUser={navbarUser}
-          onProfileClick={handleProfileClick}
-          onNotificationsClick={() => console.log('Notifications clicked')}
+          onUserProfileClick={handleUserSelect}
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
           onUserSearch={handleUserSearch}
           onUserSelect={handleUserSelect}
           onTabChange={handleTabChange}
           activeTab={activeTab}
+
         />
       </div>
       

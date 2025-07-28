@@ -1,17 +1,19 @@
-import { useState } from 'react';
-import { Search, Bell, User, Menu, Music, Headphones, LogOut, Home, Heart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Bell, User, Menu, Music, Headphones, LogOut, Home, Heart, Settings, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
+
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
 
+import { createPortal } from 'react-dom';
+
+
 interface NavbarProps {
-  onProfileClick?: () => void;
-  onNotificationsClick?: () => void;
   onLogoClick?: () => void;
-  onLogout?: () => void;
+  onUserProfileClick?: (userId: string) => void;
   onUserSearch?: (query: string) => void;
   onUserSelect?: (userId: string) => void;
   onTabChange?: (tab: 'home' | 'following') => void;
@@ -34,9 +36,15 @@ export const Navbar = ({
   activeTab = 'home',
   currentUser 
 }: NavbarProps) => {
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const defaultUser = {
     name: 'Current User',
@@ -76,37 +84,39 @@ export const Navbar = ({
   const handleUserSelect = (userId: string) => {
     setShowSearchResults(false);
     setSearchQuery('');
-    onUserSelect?.(userId);
+    onUserProfileClick?.(userId);
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-      <div className="max-w-6xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* Enhanced Logo inspired by reference */}
-          <div className="flex items-center gap-3 group cursor-pointer" onClick={onLogoClick}>
-            {/* Logo Icon - Headphones with Music Note */}
-            <div className="relative">
-              <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow group-hover:shadow-intense transition-all duration-300 group-hover:scale-110">
-                <div className="relative">
-                  <Headphones className="w-6 h-6 text-white" />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-accent rounded-full flex items-center justify-center">
-                    <Music className="w-2 h-2 text-white" />
+    <>
+      <nav className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            {/* Enhanced Logo inspired by reference */}
+            <div className="flex items-center gap-3 group cursor-pointer" onClick={onLogoClick}>
+              {/* Logo Icon - Headphones with Music Note */}
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow group-hover:shadow-intense transition-all duration-300 group-hover:scale-110">
+                  <div className="relative">
+                    <Headphones className="w-6 h-6 text-white" />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-accent rounded-full flex items-center justify-center">
+                      <Music className="w-2 h-2 text-white" />
+                    </div>
                   </div>
                 </div>
+                {/* Glow ring */}
+                <div className="absolute inset-0 w-10 h-10 rounded-full bg-gradient-primary opacity-20 blur-md group-hover:opacity-40 transition-opacity duration-300"></div>
               </div>
-              {/* Glow ring */}
-              <div className="absolute inset-0 w-10 h-10 rounded-full bg-gradient-primary opacity-20 blur-md group-hover:opacity-40 transition-opacity duration-300"></div>
+              
+              {/* Brand Text */}
+              <div className="flex flex-col">
+                <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent group-hover:bg-gradient-accent group-hover:bg-clip-text transition-all duration-300">
+                  Beatify
+                </h1>
+                <div className="w-full h-0.5 bg-gradient-primary rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+              </div>
             </div>
-            
-            {/* Brand Text */}
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent group-hover:bg-gradient-accent group-hover:bg-clip-text transition-all duration-300">
-                Beatify
-              </h1>
-              <div className="w-full h-0.5 bg-gradient-primary rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-            </div>
-          </div>
+
 
           {/* Navigation Tabs */}
           <div className="flex items-center gap-6 mx-8">
@@ -151,56 +161,57 @@ export const Navbar = ({
                 onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
                 className="pl-10 bg-muted border-muted-foreground/20 focus:border-primary"
               />
+
             </div>
-            
-            {/* Search Results Dropdown */}
-            {showSearchResults && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                {searchResults.map((profile) => (
-                  <div
-                    key={profile.user_id}
-                    onClick={() => handleUserSelect(profile.user_id)}
-                    className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
+
+            {/* User Profile */}
+            <div className="flex items-center gap-4">
+              {/* Notifications */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative" 
+                onClick={() => onPostClick?.()}
+              >
+                <Plus className="w-5 h-5" />
+              </Button>
+
+              {/* User Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors"
                   >
-                    {profile.avatar_url ? (
+                    {user.avatar ? (
                       <img 
-                        src={profile.avatar_url} 
-                        alt={profile.display_name || profile.username}
-                        className="w-8 h-8 rounded-full object-cover"
+                        src={user.avatar} 
+                        alt={user.name}
+                        className="w-8 h-8 rounded-full object-cover border-2 border-primary/20"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                        <span className="text-sm font-bold">
-                          {(profile.display_name || profile.username || 'U').charAt(0).toUpperCase()}
-                        </span>
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center border-2 border-primary/20">
+                        <User className="w-4 h-4" />
                       </div>
                     )}
-                    <div>
-                      <div className="font-medium">{profile.display_name || 'Anonymous'}</div>
-                      <div className="text-sm text-muted-foreground">@{profile.username}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* User Profile */}
-          <div className="flex items-center gap-4">
-            {/* Notifications */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="relative" 
-              onClick={onNotificationsClick}
-            >
-              <Bell className="w-5 h-5" />
-              {user.notifications > 0 && (
-                <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-primary text-xs">
-                  {user.notifications}
-                </Badge>
-              )}
-            </Button>
+                    <span className="font-medium hidden sm:block">{user.name}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => onUserProfileClick?.(user.user_id)} className="cursor-pointer">
+                    <User className="w-4 h-4 mr-2" />
+                    View Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onSettingsClick} className="cursor-pointer">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
             {/* User Profile Dropdown */}
             <DropdownMenu>
@@ -235,7 +246,7 @@ export const Navbar = ({
             </Button>
           </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 };

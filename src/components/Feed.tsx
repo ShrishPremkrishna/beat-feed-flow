@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { PostComposer } from './PostComposer';
 import { UserPost } from './UserPost';
+import { ShareModal } from './ShareModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,6 +15,8 @@ interface FeedProps {
 export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, activeTab = 'home' }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -220,6 +223,13 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
     }
   };
 
+  const handleShare = (postId: string) => {
+    // Generate the direct link to the post detail view
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    setShareUrl(postUrl);
+    setShowShareModal(true);
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Post Composer */}
@@ -255,6 +265,7 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
                 post={post}
                 onLike={() => handleLike(post.id)}
                 onComment={() => console.log('Comment on post', post.id)}
+                onShare={() => handleShare(post.id)}
                 onPostClick={() => onPostDetailView?.(post.id)}
                 onDelete={() => loadPosts()} // Reload posts when one is deleted
                 onUserProfileClick={onUserProfileClick}
@@ -268,6 +279,14 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
       <div className="flex justify-center py-8">
         <div className="text-muted-foreground animate-pulse">Loading more content...</div>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        url={shareUrl}
+        title="Share Post"
+      />
     </div>
   );
 };

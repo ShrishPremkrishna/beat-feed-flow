@@ -3,6 +3,7 @@ import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, 
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
+import { ShareModal } from './ShareModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -31,6 +32,8 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sortBy, setSortBy] = useState<'likes' | 'recent'>('likes');
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -240,29 +243,26 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
-        const { error } = await supabase
+        await supabase
           .from('likes')
           .delete()
           .eq('user_id', currentUser.id)
           .eq('comment_id', replyId);
-          
-        if (error) throw error;
       } else {
         // Like the reply
-        const { error } = await supabase
+        await supabase
           .from('likes')
           .insert({
             user_id: currentUser.id,
             comment_id: replyId
           });
-          
-        if (error) throw error;
       }
       
       // Small delay to ensure database consistency, then reload
       setTimeout(async () => {
         await loadPostDetail();
       }, 100);
+
     } catch (error) {
       // Revert optimistic update on error
       setReplies(prev => prev.map(reply => 
@@ -282,6 +282,13 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
         variant: 'destructive'
       });
     }
+  };
+
+  const handleShare = () => {
+    // Generate the direct link to the post detail view
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    setShareUrl(postUrl);
+    setShowShareModal(true);
   };
 
   if (loading) {
@@ -409,6 +416,7 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={handleShare}
                 className="flex items-center gap-2 text-muted-foreground hover:text-primary"
               >
                 <Share className="w-4 h-4" />
@@ -548,6 +556,14 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
           ))
         )}
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        url={shareUrl}
+        title="Share Post"
+      />
     </div>
   );
 };

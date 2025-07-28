@@ -303,7 +303,10 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
   };
 
   return (
-    <div className="beat-card space-y-4 animate-fade-in">
+    <div 
+      className="beat-card space-y-4 animate-fade-in"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="flex items-start gap-3">
         <div className="relative">
           {userProfile?.avatar_url ? (
