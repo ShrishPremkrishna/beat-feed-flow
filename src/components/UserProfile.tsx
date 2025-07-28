@@ -46,6 +46,12 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [userReplies, setUserReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [showFollowersList, setShowFollowersList] = useState(false);
+  const [showFollowingList, setShowFollowingList] = useState(false);
+  const [followersList, setFollowersList] = useState<any[]>([]);
+  const [followingList, setFollowingList] = useState<any[]>([]);
 
   const defaultUser = {
     name: 'BeatMaker Pro',
@@ -77,6 +83,7 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
   useEffect(() => {
     if (userId) {
       loadUserActivity();
+      checkFollowStatus();
     }
   }, [userId]);
 
@@ -150,7 +157,7 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
       // Load user profile for display (the one being viewed)
       const { data: userProfile } = await supabase
         .from('profiles')
-        .select('display_name, username, avatar_url')
+        .select('display_name, username, avatar_url, followers_count, following_count')
         .eq('user_id', targetUserId)
         .single();
 
@@ -164,6 +171,12 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
 
       setUserPosts(posts || []);
       setUserReplies(transformedReplies);
+      
+      // Update follower/following counts from the user profile
+      if (userProfile) {
+        setFollowersCount(userProfile.followers_count || 0);
+        setFollowingCount(userProfile.following_count || 0);
+      }
     } catch (error) {
       console.error('Error loading user activity:', error);
     } finally {
@@ -171,9 +184,221 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
     }
   };
 
+  const checkFollowStatus = async () => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser || !userId || userId === currentUser.id) {
+        setIsFollowing(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('follows')
+        .select('id')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+        throw error;
+      }
+
+      setIsFollowing(!!data);
+    } catch (error) {
+      console.error('Error checking follow status:', error);
+    }
+  };
+
+  const handleFollow = async () => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser || !userId || userId === currentUser.id) return;
+
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', userId);
+
+        if (error) throw error;
+
+        setIsFollowing(false);
+        setFollowersCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from('follows')
+          .insert({
+            follower_id: currentUser.id,
+            following_id: userId
+          });
+
+        if (error) throw error;
+
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    }
+  };
+
+  const loadFollowersList = async () => {
+    try {
+      const targetUserId = userId;
+      if (!targetUserId) return;
+
+      const { data, error } = await supabase
+        .from('follows')
+        .select(`
+          follower_id,
+          profiles!follows_follower_id_fkey (
+            user_id,
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('following_id', targetUserId);
+
+      if (error) throw error;
+
+      const followers = data?.map(follow => follow.profiles) || [];
+      setFollowersList(followers);
+      setShowFollowersList(true);
+    } catch (error) {
+      console.error('Error loading followers:', error);
+    }
+  };
+
+  const loadFollowingList = async () => {
+    try {
+      const targetUserId = userId;
+      if (!targetUserId) return;
+
+      const { data, error } = await supabase
+        .from('follows')
+        .select(`
+          following_id,
+          profiles!follows_following_id_fkey (
+            user_id,
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('follower_id', targetUserId);
+
+      if (error) throw error;
+
+      const following = data?.map(follow => follow.profiles) || [];
+      setFollowingList(following);
+      setShowFollowingList(true);
+    } catch (error) {
+      console.error('Error loading following:', error);
+    }
+  };
+
   const handleProfileUpdate = (updatedProfile: any) => {
     setCurrentProfile(updatedProfile);
   };
+
+  // Show followers/following lists
+  if (showFollowersList) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Button 
+          variant="ghost" 
+          onClick={() => setShowFollowersList(false)}
+          className="mb-4 hover:bg-muted"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Profile
+        </Button>
+        
+        <div className="beat-card">
+          <h2 className="text-2xl font-bold mb-6">Followers ({followersList.length})</h2>
+          <div className="space-y-4">
+            {followersList.map((follower) => (
+              <div key={follower.user_id} className="flex items-center gap-3 p-3 hover:bg-muted rounded-lg transition-colors">
+                {follower.avatar_url ? (
+                  <img 
+                    src={follower.avatar_url} 
+                    alt={follower.display_name || follower.username}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <span className="text-lg font-bold">
+                      {(follower.display_name || follower.username || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <div className="font-medium">{follower.display_name || 'Anonymous'}</div>
+                  <div className="text-sm text-muted-foreground">@{follower.username}</div>
+                </div>
+              </div>
+            ))}
+            {followersList.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No followers yet
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showFollowingList) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Button 
+          variant="ghost" 
+          onClick={() => setShowFollowingList(false)}
+          className="mb-4 hover:bg-muted"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Profile
+        </Button>
+        
+        <div className="beat-card">
+          <h2 className="text-2xl font-bold mb-6">Following ({followingList.length})</h2>
+          <div className="space-y-4">
+            {followingList.map((following) => (
+              <div key={following.user_id} className="flex items-center gap-3 p-3 hover:bg-muted rounded-lg transition-colors">
+                {following.avatar_url ? (
+                  <img 
+                    src={following.avatar_url} 
+                    alt={following.display_name || following.username}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <span className="text-lg font-bold">
+                      {(following.display_name || following.username || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <div className="font-medium">{following.display_name || 'Anonymous'}</div>
+                  <div className="text-sm text-muted-foreground">@{following.username}</div>
+                </div>
+              </div>
+            ))}
+            {followingList.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                Not following anyone yet
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -283,7 +508,7 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
                 <>
                   <Button 
                     className="btn-gradient"
-                    onClick={() => setIsFollowing(!isFollowing)}
+                    onClick={handleFollow}
                   >
                     {isFollowing ? 'Following' : 'Follow'}
                   </Button>
@@ -298,12 +523,18 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-border">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-foreground">{profileUser.stats.followers.toLocaleString()}</div>
+          <div 
+            className="text-center cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors"
+            onClick={loadFollowersList}
+          >
+            <div className="text-2xl font-bold text-foreground">{followersCount}</div>
             <div className="text-sm text-muted-foreground">Followers</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-foreground">{profileUser.stats.following.toLocaleString()}</div>
+          <div 
+            className="text-center cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors"
+            onClick={loadFollowingList}
+          >
+            <div className="text-2xl font-bold text-foreground">{followingCount}</div>
             <div className="text-sm text-muted-foreground">Following</div>
           </div>
           <div className="text-center">

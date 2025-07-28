@@ -38,9 +38,10 @@ interface UserPostProps {
   onShare?: () => void;
   onPostClick?: () => void;
   onDelete?: () => void;
+  onUserProfileClick?: (userId: string) => void;
 }
 
-export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDelete }: UserPostProps) => {
+export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDelete, onUserProfileClick }: UserPostProps) => {
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -286,7 +287,9 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             className="relative cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              // TODO: Add user profile click handler
+              if (post.user_id) {
+                onUserProfileClick?.(post.user_id);
+              }
             }}
           >
             {post.author?.avatar ? (
@@ -309,7 +312,9 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
               className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                // TODO: Add user profile click handler
+                if (post.user_id) {
+                  onUserProfileClick?.(post.user_id);
+                }
               }}
             >
               {post.author?.name || 'Anonymous User'}

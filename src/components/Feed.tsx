@@ -7,10 +7,11 @@ import { useToast } from '@/hooks/use-toast';
 interface FeedProps {
   highlightedPostId?: string | null;
   onPostDetailView?: (postId: string) => void;
+  onUserProfileClick?: (userId: string) => void;
 }
 
 
-export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
+export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -180,6 +181,7 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
                 onComment={() => console.log('Comment on post', post.id)}
                 onPostClick={() => onPostDetailView?.(post.id)}
                 onDelete={() => loadPosts()} // Reload posts when one is deleted
+                onUserProfileClick={onUserProfileClick}
               />
             </div>
           ))

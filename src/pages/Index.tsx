@@ -270,7 +270,7 @@ const Index = () => {
       );
     }
     
-    return <Feed highlightedPostId={highlightedPostId} onPostDetailView={handlePostDetailView} />;
+    return <Feed highlightedPostId={highlightedPostId} onPostDetailView={handlePostDetailView} onUserProfileClick={handleUserSelect} />;
   };
 
   if (!user) {
