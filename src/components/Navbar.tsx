@@ -1,25 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Search, Home, Heart, User, Settings, LogOut, Headphones, Music, Menu } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
-import { createPortal } from 'react-dom';
 
 interface NavbarProps {
   onLogoClick?: () => void;
   onUserProfileClick?: (userId: string) => void;
   onUserSearch?: (query: string) => void;
-  onUserSelect?: (userId: string) => void;
   onTabChange?: (tab: 'home' | 'following') => void;
   activeTab?: 'home' | 'following';
-  onProfileClick?: () => void;
-  onNotificationsClick?: () => void;
   onLogout?: () => void;
-  onPostClick?: () => void;
   onSettingsClick?: () => void;
   currentUser?: {
     user_id?: string;
@@ -30,15 +25,11 @@ interface NavbarProps {
 }
 
 export const Navbar = ({ 
-  onProfileClick, 
-  onNotificationsClick, 
   onLogoClick, 
   onLogout, 
   onUserSearch, 
-  onUserSelect, 
   onTabChange,
   activeTab = 'home',
-  onPostClick,
   onSettingsClick,
   onUserProfileClick,
   currentUser 
@@ -47,11 +38,31 @@ export const Navbar = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    const updateDropdownPosition = () => {
+      if (searchRef.current) {
+        const rect = searchRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY + 8,
+          left: rect.left + window.scrollX,
+          width: rect.width
+        });
+      }
+    };
+
+    if (showSearchResults) {
+      updateDropdownPosition();
+      window.addEventListener('scroll', updateDropdownPosition);
+      window.addEventListener('resize', updateDropdownPosition);
+      return () => {
+        window.removeEventListener('scroll', updateDropdownPosition);
+        window.removeEventListener('resize', updateDropdownPosition);
+      };
+    }
+  }, [showSearchResults]);
 
   const defaultUser = {
     user_id: '',
@@ -156,7 +167,7 @@ export const Navbar = ({
             </div>
 
             {/* Search Bar */}
-            <div className="flex-1 max-w-md mx-8 relative">
+            <div className="flex-1 max-w-md mx-8 relative" ref={searchRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
@@ -169,32 +180,6 @@ export const Navbar = ({
                   className="pl-10 bg-muted border-muted-foreground/20 focus:border-primary"
                 />
               </div>
-
-              {/* Search Results Dropdown */}
-              {showSearchResults && searchResults.length > 0 && isMounted && createPortal(
-                <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                  {searchResults.map((profile) => (
-                    <div
-                      key={profile.user_id}
-                      className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
-                      onClick={() => handleUserSelect(profile.user_id)}
-                    >
-                      <InitialsAvatar
-                        name={profile.display_name || profile.username}
-                        avatarUrl={profile.avatar_url}
-                        size="sm"
-                      />
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm">{profile.display_name || profile.username}</span>
-                        {profile.display_name && profile.username && (
-                          <span className="text-xs text-muted-foreground">@{profile.username}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>,
-                document.body
-              )}
             </div>
 
             {/* User Profile */}
@@ -240,6 +225,40 @@ export const Navbar = ({
           </div>
         </div>
       </nav>
+
+      {/* Search Results Dropdown - Portal */}
+      {showSearchResults && searchResults.length > 0 && createPortal(
+        <div 
+          className="fixed bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+            zIndex: 9999
+          }}
+        >
+          {searchResults.map((profile) => (
+            <div
+              key={profile.user_id}
+              className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
+              onClick={() => handleUserSelect(profile.user_id)}
+            >
+              <InitialsAvatar
+                name={profile.display_name || profile.username}
+                avatarUrl={profile.avatar_url}
+                size="sm"
+              />
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">{profile.display_name || profile.username}</span>
+                {profile.display_name && profile.username && (
+                  <span className="text-xs text-muted-foreground">@{profile.username}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
     </>
   );
 };
