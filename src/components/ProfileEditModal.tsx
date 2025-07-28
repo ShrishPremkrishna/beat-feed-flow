@@ -95,14 +95,18 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       console.log('User authenticated:', user.id);
 
       const fileExt = file.name.split('.').pop()?.toLowerCase();
-      const fileName = `avatar-${user.id}-${Date.now()}.${fileExt}`;
-      console.log('Generated filename:', fileName);
+      const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`;
+      console.log('Generated filename with user folder:', fileName);
 
-      // First, try to delete any existing avatar
-      const oldAvatarPath = formData.avatar_url?.split('/').pop();
-      if (oldAvatarPath && oldAvatarPath !== fileName) {
-        console.log('Removing old avatar:', oldAvatarPath);
-        await supabase.storage.from('avatars').remove([oldAvatarPath]);
+      // First, try to delete any existing avatar in the user's folder
+      const { data: existingFiles } = await supabase.storage
+        .from('avatars')
+        .list(user.id);
+
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToDelete = existingFiles.map(file => `${user.id}/${file.name}`);
+        console.log('Removing old avatars:', filesToDelete);
+        await supabase.storage.from('avatars').remove(filesToDelete);
       }
 
       console.log('Uploading to storage...');
