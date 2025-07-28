@@ -130,6 +130,18 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
 
       console.log('Replies query result:', replies, 'Error:', repliesError);
 
+      // Check which replies the current user has liked
+      let userLikes: string[] = [];
+      if (replies?.length) {
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('comment_id')
+          .eq('user_id', currentUser.id)
+          .in('comment_id', replies.map(r => r.id));
+        
+        userLikes = likesData?.map(l => l.comment_id) || [];
+      }
+
       // Load current user profile for display
       const { data: userProfile } = await supabase
         .from('profiles')
@@ -139,8 +151,14 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
 
       console.log('User profile:', userProfile);
 
+      // Transform replies to include like state
+      const transformedReplies = replies?.map(reply => ({
+        ...reply,
+        isLiked: userLikes.includes(reply.id)
+      })) || [];
+
       setUserPosts(posts || []);
-      setUserReplies(replies || []);
+      setUserReplies(transformedReplies);
     } catch (error) {
       console.error('Error loading user activity:', error);
     } finally {
@@ -430,15 +448,11 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
                        </div>
                      )}
                      
-                     {/* Reply Actions - Show likes */}
+                     {/* Reply Actions - Show likes only */}
                      <div className="flex items-center gap-4 pt-3 border-t border-border/30 mt-3">
                        <div className="flex items-center gap-1 text-muted-foreground">
-                         <Heart className="w-4 h-4" />
+                         <Heart className={`w-4 h-4 ${reply.isLiked ? 'fill-current text-red-500' : ''}`} />
                          <span className="text-sm">{reply.likes_count || 0} likes</span>
-                       </div>
-                       <div className="flex items-center gap-1 text-muted-foreground">
-                         <MessageCircle className="w-4 h-4" />
-                         <span className="text-sm">Reply</span>
                        </div>
                      </div>
                    </div>
