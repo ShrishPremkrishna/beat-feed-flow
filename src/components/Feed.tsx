@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface FeedProps {
   highlightedPostId?: string | null;
+  onPostDetailView?: (postId: string) => void;
 }
 
 const mockPosts = [
@@ -35,7 +36,7 @@ const mockPosts = [
   }
 ];
 
-export const Feed = ({ highlightedPostId }: FeedProps) => {
+export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -132,6 +133,7 @@ export const Feed = ({ highlightedPostId }: FeedProps) => {
               post={post}
               onLike={() => handleLike(post.id, 'post')}
               onComment={() => console.log('Comment on post', post.id)}
+              onPostClick={() => onPostDetailView?.(post.id)}
             />
           </div>
         ))}

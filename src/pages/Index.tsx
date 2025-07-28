@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Feed } from '@/components/Feed';
 import { UserProfile } from '@/components/UserProfile';
+import { PostDetail } from '@/components/PostDetail';
 import { AuthModal } from '@/components/AuthModal';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +16,8 @@ const Index = () => {
   const [showAuth, setShowAuth] = useState(false);
   const [loading, setLoading] = useState(true);
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+  const [showPostDetail, setShowPostDetail] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   useEffect(() => {
     // Set up auth state listener
@@ -79,11 +82,13 @@ const Index = () => {
 
   const handleProfileClick = () => {
     setShowProfile(true);
+    setShowPostDetail(false);
     setHighlightedPostId(null);
   };
 
   const handleBackToFeed = () => {
     setShowProfile(false);
+    setShowPostDetail(false);
     setHighlightedPostId(null);
     // Refresh profile data when going back to feed
     if (user) {
@@ -94,6 +99,19 @@ const Index = () => {
   const handlePostClick = (postId: string) => {
     setHighlightedPostId(postId);
     setShowProfile(false);
+    setShowPostDetail(false);
+  };
+
+  const handlePostDetailView = (postId: string) => {
+    setSelectedPostId(postId);
+    setShowPostDetail(true);
+    setShowProfile(false);
+    setHighlightedPostId(null);
+  };
+
+  const handleBackFromPostDetail = () => {
+    setShowPostDetail(false);
+    setSelectedPostId(null);
   };
 
   // Create navbar user object
@@ -104,6 +122,15 @@ const Index = () => {
   } : undefined;
 
   const renderContent = () => {
+    if (showPostDetail && selectedPostId) {
+      return (
+        <PostDetail 
+          postId={selectedPostId}
+          onBack={handleBackFromPostDetail}
+        />
+      );
+    }
+    
     if (showProfile) {
       return (
         <UserProfile 
@@ -137,7 +164,8 @@ const Index = () => {
         />
       );
     }
-    return <Feed highlightedPostId={highlightedPostId} />;
+    
+    return <Feed highlightedPostId={highlightedPostId} onPostDetailView={handlePostDetailView} />;
   };
 
   if (!user) {

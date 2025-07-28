@@ -21,9 +21,10 @@ interface UserPostProps {
   onLike?: () => void;
   onComment?: () => void;
   onShare?: () => void;
+  onPostClick?: () => void;
 }
 
-export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) => {
+export const UserPost = ({ post, onLike, onComment, onShare, onPostClick }: UserPostProps) => {
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,7 +112,10 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
   };
 
   return (
-    <div className="post-card space-y-4 animate-fade-in">
+    <div 
+      className="post-card space-y-4 animate-fade-in cursor-pointer hover:bg-muted/50 transition-colors"
+      onClick={onPostClick}
+    >
       {/* Post Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -152,7 +156,10 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
           <Button
             variant="ghost"
             size="sm"
-            onClick={onLike}
+            onClick={(e) => {
+              e.stopPropagation();
+              onLike?.();
+            }}
             className={`flex items-center gap-2 transition-all duration-300 ${
               post.isLiked 
                 ? 'text-red-500 hover:text-red-400' 
@@ -168,7 +175,10 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setShowReplyComposer(!showReplyComposer)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowReplyComposer(!showReplyComposer);
+            }}
             className="flex items-center gap-2 text-muted-foreground"
           >
             <MessageCircle className="w-4 h-4" />
@@ -178,7 +188,10 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={onShare}
+            onClick={(e) => {
+              e.stopPropagation();
+              onShare?.();
+            }}
             className="flex items-center gap-2 text-muted-foreground"
           >
             <Share className="w-4 h-4" />
