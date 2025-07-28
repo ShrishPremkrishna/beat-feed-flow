@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Search, Home, Heart, User, Settings, LogOut, Headphones, Music, Menu } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
