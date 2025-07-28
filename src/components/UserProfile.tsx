@@ -101,8 +101,9 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
     loadUserActivity();
     if (userId) {
       checkFollowStatus();
-      loadProfileStats();
     }
+    // Always load profile stats (for own profile or other user's profile)
+    loadProfileStats();
   }, [userId]);
 
   const loadUserActivity = async () => {
@@ -270,25 +271,46 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
 
   const loadFollowersList = async () => {
     try {
-      const targetUserId = userId;
+      let targetUserId = userId;
+      
+      // If no userId provided, get current user's ID
+      if (!targetUserId) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        targetUserId = currentUser?.id;
+      }
+      
       if (!targetUserId) return;
 
-      const { data, error } = await supabase
+      console.log('Loading followers for user:', targetUserId);
+
+      // First get the follow relationships
+      const { data: followsData, error: followsError } = await supabase
         .from('follows')
-        .select(`
-          follower_id,
-          profiles!follows_follower_id_fkey (
-            user_id,
-            display_name,
-            username,
-            avatar_url
-          )
-        `)
+        .select('follower_id')
         .eq('following_id', targetUserId);
 
-      if (error) throw error;
+      if (followsError) throw followsError;
 
-      const followers = data?.map(follow => follow.profiles) || [];
+      console.log('Follows data:', followsData);
+
+      if (!followsData || followsData.length === 0) {
+        setFollowersList([]);
+        setShowFollowersList(true);
+        return;
+      }
+
+      // Then get the profiles for those followers
+      const followerIds = followsData.map(follow => follow.follower_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username, avatar_url')
+        .in('user_id', followerIds);
+
+      if (profilesError) throw profilesError;
+
+      console.log('Followers profiles:', profilesData);
+
+      const followers = profilesData || [];
       setFollowersList(followers);
       setShowFollowersList(true);
     } catch (error) {
@@ -298,25 +320,46 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
 
   const loadFollowingList = async () => {
     try {
-      const targetUserId = userId;
+      let targetUserId = userId;
+      
+      // If no userId provided, get current user's ID
+      if (!targetUserId) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        targetUserId = currentUser?.id;
+      }
+      
       if (!targetUserId) return;
 
-      const { data, error } = await supabase
+      console.log('Loading following for user:', targetUserId);
+
+      // First get the follow relationships
+      const { data: followsData, error: followsError } = await supabase
         .from('follows')
-        .select(`
-          following_id,
-          profiles!follows_following_id_fkey (
-            user_id,
-            display_name,
-            username,
-            avatar_url
-          )
-        `)
+        .select('following_id')
         .eq('follower_id', targetUserId);
 
-      if (error) throw error;
+      if (followsError) throw followsError;
 
-      const following = data?.map(follow => follow.profiles) || [];
+      console.log('Following data:', followsData);
+
+      if (!followsData || followsData.length === 0) {
+        setFollowingList([]);
+        setShowFollowingList(true);
+        return;
+      }
+
+      // Then get the profiles for those users being followed
+      const followingIds = followsData.map(follow => follow.following_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username, avatar_url')
+        .in('user_id', followingIds);
+
+      if (profilesError) throw profilesError;
+
+      console.log('Following profiles:', profilesData);
+
+      const following = profilesData || [];
       setFollowingList(following);
       setShowFollowingList(true);
     } catch (error) {
@@ -610,15 +653,23 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-border">
           <div 
-            className="text-center cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors"
-            onClick={loadFollowersList}
+            className={`text-center p-2 rounded transition-colors ${
+              isOwnProfile 
+                ? 'cursor-pointer hover:bg-muted/50' 
+                : 'cursor-default'
+            }`}
+            onClick={isOwnProfile ? loadFollowersList : undefined}
           >
             <div className="text-2xl font-bold text-foreground">{followersCount}</div>
             <div className="text-sm text-muted-foreground">Followers</div>
           </div>
           <div 
-            className="text-center cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors"
-            onClick={loadFollowingList}
+            className={`text-center p-2 rounded transition-colors ${
+              isOwnProfile 
+                ? 'cursor-pointer hover:bg-muted/50' 
+                : 'cursor-default'
+            }`}
+            onClick={isOwnProfile ? loadFollowingList : undefined}
           >
             <div className="text-2xl font-bold text-foreground">{followingCount}</div>
             <div className="text-sm text-muted-foreground">Following</div>
