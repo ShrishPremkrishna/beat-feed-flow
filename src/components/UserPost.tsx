@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
@@ -10,6 +10,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserPostProps {
@@ -38,12 +45,13 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [sortBy, setSortBy] = useState<'likes' | 'recent'>('likes');
   const { toast } = useToast();
 
   useEffect(() => {
     loadComments();
     getCurrentUser();
-  }, [post.id]);
+  }, [post.id, sortBy]);
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -52,6 +60,9 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
 
   const loadComments = async () => {
     try {
+      const orderBy = sortBy === 'likes' ? 'likes_count' : 'created_at';
+      const ascending = sortBy === 'likes' ? false : true;
+      
       const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
         .select(`
@@ -67,7 +78,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
           )
         `)
         .eq('post_id', post.id)
-        .order('created_at', { ascending: true });
+        .order(orderBy, { ascending });
 
       if (commentsError) throw commentsError;
 
@@ -93,6 +104,18 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         profileMap.set(profile.user_id, profile);
       });
 
+      // Check which replies the current user has liked
+      let userLikes: string[] = [];
+      if (currentUser && commentsData?.length) {
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('comment_id')
+          .eq('user_id', currentUser.id)
+          .in('comment_id', commentsData.map(c => c.id));
+        
+        userLikes = likesData?.map(l => l.comment_id) || [];
+      }
+
       // Transform comments with author info and beat data
       const transformedComments = commentsData.map((comment: any) => {
         const profile = profileMap.get(comment.user_id);
@@ -111,7 +134,9 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             name: profile?.display_name || profile?.username || 'Anonymous User',
             avatar: profile?.avatar_url || ''
           },
-          timestamp: new Date(comment.created_at).toLocaleString()
+          timestamp: new Date(comment.created_at).toLocaleString(),
+          likes: comment.likes_count || 0,
+          isLiked: userLikes.includes(comment.id)
         };
       });
 
@@ -180,6 +205,46 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       toast({
         title: 'Error',
         description: 'Failed to delete reply',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleReplyLike = async (replyId: string, isCurrentlyLiked: boolean) => {
+    if (!currentUser) {
+      toast({
+        title: 'Please log in',
+        description: 'You need to be logged in to like replies',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      if (isCurrentlyLiked) {
+        // Unlike the reply
+        await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('comment_id', replyId);
+      } else {
+        // Like the reply
+        await supabase
+          .from('likes')
+          .insert({
+            user_id: currentUser.id,
+            comment_id: replyId
+          });
+      }
+
+      // Refresh replies to show updated like count
+      await loadComments();
+    } catch (error) {
+      console.error('Error toggling reply like:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to toggle like',
         variant: 'destructive'
       });
     }
@@ -313,6 +378,30 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       {/* Replies */}
       {replies.length > 0 && (
         <div className="space-y-4 border-t border-border pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-muted-foreground">
+              Replies ({replies.length})
+            </span>
+            <Select value={sortBy} onValueChange={(value: 'likes' | 'recent') => setSortBy(value)}>
+              <SelectTrigger className="w-[140px] h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="likes">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-3 h-3" />
+                    Most Liked
+                  </div>
+                </SelectItem>
+                <SelectItem value="recent">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3 h-3" />
+                    Most Recent
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {replies.map((reply, index) => {
             const isReplyOwner = currentUser && currentUser.id === reply.user_id;
             
@@ -364,23 +453,45 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                       </DropdownMenu>
                     )}
                   </div>
-                  {/* Display beat if it's a beat reply */}
-                  {reply.beat ? (
-                    <div className="mt-2">
-                      <BeatPlayer
-                        audioUrl={reply.beat.file_url}
-                        title={reply.beat.title}
-                        artist={reply.beat.artist}
-                        bpm={reply.beat.bpm || undefined}
-                        key={reply.beat.key || undefined}
-                        mood={reply.beat.mood || undefined}
-                        className="max-w-md"
-                      />
-                    </div>
-                  ) : (
-                    /* Display text content for old text replies */
-                    reply.content && <p className="text-sm">{reply.content}</p>
-                  )}
+                   {/* Display beat if it's a beat reply */}
+                   {reply.beat ? (
+                     <div className="mt-2 mb-3">
+                       <BeatPlayer
+                         audioUrl={reply.beat.file_url}
+                         title={reply.beat.title}
+                         artist={reply.beat.artist}
+                         bpm={reply.beat.bpm || undefined}
+                         key={reply.beat.key || undefined}
+                         mood={reply.beat.mood || undefined}
+                         className="max-w-md"
+                       />
+                     </div>
+                   ) : (
+                     /* Display text content for old text replies */
+                     reply.content && <p className="text-sm mb-3">{reply.content}</p>
+                   )}
+                   
+                   {/* Reply Actions */}
+                   <div className="flex items-center gap-4 pt-2 border-t border-border/30">
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         handleReplyLike(reply.id, reply.isLiked);
+                       }}
+                       className={`flex items-center gap-1 transition-all duration-300 ${
+                         reply.isLiked 
+                           ? 'text-red-500 hover:text-red-400' 
+                           : 'text-muted-foreground hover:text-red-500'
+                       }`}
+                     >
+                       <Heart className={`w-3 h-3 transition-all duration-300 ${
+                         reply.isLiked ? 'fill-current scale-110' : ''
+                       }`} />
+                       <span className="text-xs font-medium">{reply.likes}</span>
+                     </Button>
+                   </div>
                 </div>
               </div>
             );

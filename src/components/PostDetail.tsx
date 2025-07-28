@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
@@ -11,6 +11,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface PostDetailProps {
   postId: string;
@@ -23,12 +30,13 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
   const [loading, setLoading] = useState(true);
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [sortBy, setSortBy] = useState<'likes' | 'recent'>('likes');
   const { toast } = useToast();
 
   useEffect(() => {
     loadPostDetail();
     getCurrentUser();
-  }, [postId]);
+  }, [postId, sortBy]);
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -78,6 +86,9 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
       setPost(transformedPost);
 
       // Load replies/comments
+      const orderBy = sortBy === 'likes' ? 'likes_count' : 'created_at';
+      const ascending = sortBy === 'likes' ? false : true;
+      
       const { data: repliesData, error: repliesError } = await supabase
         .from('comments')
         .select(`
@@ -86,6 +97,7 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
           created_at,
           user_id,
           beat_id,
+          likes_count,
           beats (
             id,
             title,
@@ -100,7 +112,7 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
           )
         `)
         .eq('post_id', postId)
-        .order('created_at', { ascending: true });
+        .order(orderBy, { ascending });
 
       if (repliesError) throw repliesError;
 
@@ -117,6 +129,18 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
         profileMap.set(profile.user_id, profile);
       });
 
+      // Check which replies the current user has liked
+      let userLikes: string[] = [];
+      if (currentUser && repliesData?.length) {
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('comment_id')
+          .eq('user_id', currentUser.id)
+          .in('comment_id', repliesData.map(r => r.id));
+        
+        userLikes = likesData?.map(l => l.comment_id) || [];
+      }
+
       // Transform replies data
       const transformedReplies = repliesData?.map(reply => {
         const profile = profileMap.get(reply.user_id);
@@ -126,7 +150,9 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
             name: profile?.display_name || profile?.username || 'Anonymous User',
             avatar: profile?.avatar_url || ''
           },
-          timestamp: new Date(reply.created_at).toLocaleString()
+          timestamp: new Date(reply.created_at).toLocaleString(),
+          likes: reply.likes_count || 0,
+          isLiked: userLikes.includes(reply.id)
         };
       }) || [];
 
@@ -185,12 +211,44 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
     }
   };
 
-  const handleLike = async () => {
-    // TODO: Implement like functionality
-    toast({
-      title: 'Feature coming soon',
-      description: 'Like functionality will be implemented soon!'
-    });
+  const handleReplyLike = async (replyId: string, isCurrentlyLiked: boolean) => {
+    if (!currentUser) {
+      toast({
+        title: 'Please log in',
+        description: 'You need to be logged in to like replies',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      if (isCurrentlyLiked) {
+        // Unlike the reply
+        await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('comment_id', replyId);
+      } else {
+        // Like the reply
+        await supabase
+          .from('likes')
+          .insert({
+            user_id: currentUser.id,
+            comment_id: replyId
+          });
+      }
+
+      // Refresh replies to show updated like count
+      loadPostDetail();
+    } catch (error) {
+      console.error('Error toggling reply like:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to toggle like',
+        variant: 'destructive'
+      });
+    }
   };
 
   if (loading) {
@@ -295,7 +353,12 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleLike}
+                onClick={() => {
+                  toast({
+                    title: 'Feature coming soon',
+                    description: 'Post liking will be implemented soon!'
+                  });
+                }}
                 className="flex items-center gap-2 text-muted-foreground hover:text-primary"
               >
                 <Heart className="w-4 h-4" />
@@ -335,9 +398,32 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
 
       {/* Replies Section */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">
-          Replies ({replies.length})
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-foreground">
+            Replies ({replies.length})
+          </h3>
+          {replies.length > 0 && (
+            <Select value={sortBy} onValueChange={(value: 'likes' | 'recent') => setSortBy(value)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="likes">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    Most Liked
+                  </div>
+                </SelectItem>
+                <SelectItem value="recent">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Most Recent
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
         
         {replies.length === 0 ? (
           <div className="beat-card text-center py-8 text-muted-foreground">
@@ -387,22 +473,41 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
                       </DropdownMenu>
                     )}
                   </div>
-                  {reply.content && (
-                    <p className="text-foreground text-sm mb-3">{reply.content}</p>
-                  )}
-                  {reply.beats && (
-                    <div className="bg-muted/30 rounded-lg border border-border overflow-hidden">
-                      <BeatPlayer
-                        audioUrl={reply.beats.file_url || ''}
-                        title={reply.beats.title || 'Untitled Beat'}
-                        artist={reply.beats.artist || reply.author.name}
-                        bpm={reply.beats.bpm || undefined}
-                        key={reply.beats.key || undefined}
-                        mood={reply.beats.mood || undefined}
-                        className="p-3"
-                      />
-                    </div>
-                  )}
+                   {reply.content && (
+                     <p className="text-foreground text-sm mb-3">{reply.content}</p>
+                   )}
+                   {reply.beats && (
+                     <div className="bg-muted/30 rounded-lg border border-border overflow-hidden mb-3">
+                       <BeatPlayer
+                         audioUrl={reply.beats.file_url || ''}
+                         title={reply.beats.title || 'Untitled Beat'}
+                         artist={reply.beats.artist || reply.author.name}
+                         bpm={reply.beats.bpm || undefined}
+                         key={reply.beats.key || undefined}
+                         mood={reply.beats.mood || undefined}
+                         className="p-3"
+                       />
+                     </div>
+                   )}
+                   
+                   {/* Reply Actions */}
+                   <div className="flex items-center gap-4 pt-2 border-t border-border/30">
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       onClick={() => handleReplyLike(reply.id, reply.isLiked)}
+                       className={`flex items-center gap-1 transition-all duration-300 ${
+                         reply.isLiked 
+                           ? 'text-red-500 hover:text-red-400' 
+                           : 'text-muted-foreground hover:text-red-500'
+                       }`}
+                     >
+                       <Heart className={`w-3 h-3 transition-all duration-300 ${
+                         reply.isLiked ? 'fill-current scale-110' : ''
+                       }`} />
+                       <span className="text-xs font-medium">{reply.likes}</span>
+                     </Button>
+                   </div>
                 </div>
               </div>
             </div>
