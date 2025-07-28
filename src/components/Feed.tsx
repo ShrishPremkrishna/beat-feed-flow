@@ -60,8 +60,10 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
         profileMap.set(profile.user_id, profile);
       });
 
-      // Transform posts data
-      const transformedPosts = postsData?.map((post: any) => {
+      // Transform posts data - ensure proper ordering (newest first)
+      const transformedPosts = postsData
+        ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        ?.map((post: any) => {
         const profile = profileMap.get(post.user_id);
         return {
           ...post,
