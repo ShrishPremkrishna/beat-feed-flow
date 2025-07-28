@@ -97,9 +97,11 @@ const Index = () => {
   };
 
   const handlePostClick = (postId: string) => {
-    setHighlightedPostId(postId);
+    // When clicking from profile, go directly to post detail view
+    setSelectedPostId(postId);
+    setShowPostDetail(true);
     setShowProfile(false);
-    setShowPostDetail(false);
+    setHighlightedPostId(null);
   };
 
   const handlePostDetailView = (postId: string) => {
