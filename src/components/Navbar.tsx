@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Bell, User, Menu, Music } from 'lucide-react';
+import { Search, Bell, User, Menu, Music, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -29,14 +29,29 @@ export const Navbar = ({ onProfileClick, onNotificationsClick, currentUser }: Na
     <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <Music className="w-5 h-5 text-white" />
+          {/* Enhanced Logo inspired by reference */}
+          <div className="flex items-center gap-3 group cursor-pointer">
+            {/* Logo Icon - Headphones with Music Note */}
+            <div className="relative">
+              <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow group-hover:shadow-intense transition-all duration-300 group-hover:scale-110">
+                <div className="relative">
+                  <Headphones className="w-6 h-6 text-white" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-accent rounded-full flex items-center justify-center">
+                    <Music className="w-2 h-2 text-white" />
+                  </div>
+                </div>
+              </div>
+              {/* Glow ring */}
+              <div className="absolute inset-0 w-10 h-10 rounded-full bg-gradient-primary opacity-20 blur-md group-hover:opacity-40 transition-opacity duration-300"></div>
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Beatify
-            </h1>
+            
+            {/* Brand Text */}
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent group-hover:bg-gradient-accent group-hover:bg-clip-text transition-all duration-300">
+                Beatify
+              </h1>
+              <div className="w-full h-0.5 bg-gradient-primary rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+            </div>
           </div>
 
           {/* Search Bar */}
