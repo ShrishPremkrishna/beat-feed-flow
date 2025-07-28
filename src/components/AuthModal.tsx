@@ -30,6 +30,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
+      console.log('Attempting login...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
         password: loginForm.password,
@@ -45,12 +46,18 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
       }
 
       if (data.user) {
+        console.log('Login successful:', data.user.id);
         onAuth(data.user);
         onClose();
         toast({
           title: "Welcome back!",
           description: "You've successfully signed in.",
         });
+        
+        // Force a page reload to ensure clean state
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
       }
     } catch (error) {
       toast({
@@ -88,12 +95,18 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
       }
 
       if (data.user) {
+        console.log('Signup successful:', data.user.id);
         onAuth(data.user);
         onClose();
         toast({
           title: "Account Created!",
           description: "Welcome to Beatify! You can now start sharing your beats.",
         });
+        
+        // Force a page reload to ensure clean state
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
       }
     } catch (error) {
       toast({

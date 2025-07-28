@@ -20,9 +20,14 @@ const Index = () => {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Set up auth state listener
+    let mounted = true;
+
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
+        
+        console.log('Auth state change:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -30,7 +35,9 @@ const Index = () => {
         // Fetch user profile if logged in
         if (session?.user) {
           setTimeout(() => {
-            fetchUserProfile(session.user.id);
+            if (mounted) {
+              fetchUserProfile(session.user.id);
+            }
           }, 0);
         } else {
           setUserProfile(null);
@@ -38,20 +45,45 @@ const Index = () => {
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
-      if (session?.user) {
-        setTimeout(() => {
-          fetchUserProfile(session.user.id);
-        }, 0);
-      }
-    });
+    // THEN check for existing session
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setLoading(false);
+          return;
+        }
 
-    return () => subscription.unsubscribe();
+        if (!mounted) return;
+
+        console.log('Initial session check:', session?.user?.id);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        
+        if (session?.user) {
+          setTimeout(() => {
+            if (mounted) {
+              fetchUserProfile(session.user.id);
+            }
+          }, 0);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
@@ -74,11 +106,34 @@ const Index = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setUserProfile(null);
+    try {
+      console.log('Logging out...');
+      
+      // Clear auth state first
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      
+      if (error) {
+        console.error('Logout error:', error);
+      } else {
+        console.log('Logout successful');
+      }
+      
+      // Force page reload to ensure clean state
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    } catch (error) {
+      console.error('Logout exception:', error);
+      // Force reload even if there's an error
+      window.location.reload();
+    }
   };
+
 
   const handleProfileClick = () => {
     setShowProfile(true);
@@ -228,6 +283,7 @@ const Index = () => {
           currentUser={navbarUser}
           onProfileClick={handleProfileClick}
           onNotificationsClick={() => console.log('Notifications clicked')}
+          onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
         />
       </div>

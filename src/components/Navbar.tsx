@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Search, Bell, User, Menu, Music, Headphones } from 'lucide-react';
+import { Search, Bell, User, Menu, Music, Headphones, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface NavbarProps {
   onProfileClick?: () => void;
   onNotificationsClick?: () => void;
   onLogoClick?: () => void;
+  onLogout?: () => void;
   currentUser?: {
     name: string;
     avatar: string;
@@ -15,7 +17,7 @@ interface NavbarProps {
   };
 }
 
-export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, currentUser }: NavbarProps) => {
+export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, onLogout, currentUser }: NavbarProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const defaultUser = {
@@ -69,48 +71,55 @@ export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, curr
             </div>
           </div>
 
-          {/* Navigation Actions */}
-          <div className="flex items-center gap-3">
+          {/* User Profile */}
+          <div className="flex items-center gap-4">
             {/* Notifications */}
-            <Button
-              variant="ghost"
-              size="sm"
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="relative" 
               onClick={onNotificationsClick}
-              className="relative"
             >
               <Bell className="w-5 h-5" />
               {user.notifications > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs"
-                >
+                <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-primary text-xs">
                   {user.notifications}
                 </Badge>
               )}
             </Button>
 
-            {/* Profile */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onProfileClick}
-              className="flex items-center gap-2"
-            >
-              {user.avatar ? (
-                <img 
-                  src={user.avatar} 
-                  alt={user.name}
-                  className="w-8 h-8 rounded-full object-cover border border-primary/20"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-muted border border-primary/20 flex items-center justify-center">
-                  <span className="text-sm font-bold text-muted-foreground">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
-              <span className="hidden md:inline text-sm font-medium">{user.name}</span>
-            </Button>
+            {/* User Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors"
+                >
+                  {user.avatar ? (
+                    <img 
+                      src={user.avatar} 
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-primary/20"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center border-2 border-primary/20">
+                      <User className="w-4 h-4" />
+                    </div>
+                  )}
+                  <span className="font-medium hidden sm:block">{user.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={onProfileClick} className="cursor-pointer">
+                  <User className="w-4 h-4 mr-2" />
+                  View Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Mobile Menu */}
             <Button variant="ghost" size="sm" className="md:hidden">
