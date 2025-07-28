@@ -279,6 +279,7 @@ const Index = () => {
         <PostDetail 
           postId={selectedPostId}
           onBack={handleBackFromPostDetail}
+          onUserProfileClick={handleUserSelect}
         />
       );
     }

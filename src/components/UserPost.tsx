@@ -380,8 +380,8 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             className="relative cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              if (post.user_id) {
-                onUserProfileClick?.(post.user_id);
+              if (post.user_id && onUserProfileClick) {
+                onUserProfileClick(post.user_id);
               }
             }}
           >
@@ -404,8 +404,8 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
               className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                if (post.user_id) {
-                  onUserProfileClick?.(post.user_id);
+                if (post.user_id && onUserProfileClick) {
+                  onUserProfileClick(post.user_id);
                 }
               }}
             >
@@ -588,23 +588,43 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             
             return (
               <div key={reply.id || index} className="flex gap-3">
-                {reply.author?.avatar ? (
-                  <img 
-                    src={reply.author.avatar} 
-                    alt={reply.author?.name || 'User'}
-                    className="w-8 h-8 rounded-full object-cover border border-primary/20"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-muted border border-primary/20 flex items-center justify-center">
-                    <span className="text-sm font-bold text-muted-foreground">
-                      {(reply.author?.name || 'U').charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                <div 
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (reply.user_id && onUserProfileClick) {
+                      onUserProfileClick(reply.user_id);
+                    }
+                  }}
+                >
+                  {reply.author?.avatar ? (
+                    <img 
+                      src={reply.author.avatar} 
+                      alt={reply.author?.name || 'User'}
+                      className="w-8 h-8 rounded-full object-cover border border-primary/20 hover:border-primary/40 transition-colors"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-muted border border-primary/20 hover:border-primary/40 transition-colors flex items-center justify-center">
+                      <span className="text-sm font-bold text-muted-foreground">
+                        {(reply.author?.name || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 bg-muted rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{reply.author?.name || 'Anonymous User'}</span>
+                      <span 
+                        className="font-medium text-sm cursor-pointer hover:text-primary transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (reply.user_id && onUserProfileClick) {
+                            onUserProfileClick(reply.user_id);
+                          }
+                        }}
+                      >
+                        {reply.author?.name || 'Anonymous User'}
+                      </span>
                       <span className="text-xs text-muted-foreground">{reply.timestamp}</span>
                     </div>
                     {isReplyOwner && (

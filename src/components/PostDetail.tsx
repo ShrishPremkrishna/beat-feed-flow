@@ -23,9 +23,10 @@ import {
 interface PostDetailProps {
   postId: string;
   onBack: () => void;
+  onUserProfileClick?: (userId: string) => void;
 }
 
-export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
+export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailProps) => {
   const [post, setPost] = useState<any>(null);
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -342,15 +343,23 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
       {/* Main Post */}
       <div className="beat-card space-y-4">
         <div className="flex items-start gap-3">
-          <div className="relative">
+          <div 
+            className="relative cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (post.user_id && onUserProfileClick) {
+                onUserProfileClick(post.user_id);
+              }
+            }}
+          >
             {post.author.avatar ? (
               <img 
                 src={post.author.avatar}
                 alt={post.author.name}
-                className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-glow"
+                className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-glow hover:border-primary/50 transition-colors"
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-glow flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-glow hover:border-primary/50 transition-colors flex items-center justify-center">
                 <span className="text-lg font-bold text-muted-foreground">
                   {post.author.name.charAt(0).toUpperCase()}
                 </span>
@@ -360,7 +369,17 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">{post.author.name}</span>
+                <span 
+                  className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (post.user_id && onUserProfileClick) {
+                      onUserProfileClick(post.user_id);
+                    }
+                  }}
+                >
+                  {post.author.name}
+                </span>
                 <span className="text-muted-foreground text-sm">{post.timestamp}</span>
               </div>
               {currentUser && currentUser.id === post.user_id && (
@@ -474,15 +493,23 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
           replies.map((reply) => (
             <div key={reply.id} className="beat-card space-y-4">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0">
+                <div 
+                  className="flex-shrink-0 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (reply.user_id && onUserProfileClick) {
+                      onUserProfileClick(reply.user_id);
+                    }
+                  }}
+                >
                   {reply.author.avatar ? (
                     <img 
                       src={reply.author.avatar}
                       alt={reply.author.name}
-                      className="w-10 h-10 rounded-full object-cover"
+                      className="w-10 h-10 rounded-full object-cover hover:border-2 hover:border-primary/30 transition-colors"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:border-2 hover:border-primary/30 transition-colors">
                       <span className="text-sm font-bold text-muted-foreground">
                         {reply.author.name.charAt(0).toUpperCase()}
                       </span>
@@ -492,7 +519,17 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{reply.author.name}</span>
+                      <span 
+                        className="font-semibold text-sm cursor-pointer hover:text-primary transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (reply.user_id && onUserProfileClick) {
+                            onUserProfileClick(reply.user_id);
+                          }
+                        }}
+                      >
+                        {reply.author.name}
+                      </span>
                       <span className="text-muted-foreground text-xs">{reply.timestamp}</span>
                     </div>
                     {currentUser && currentUser.id === reply.user_id && (
