@@ -155,6 +155,28 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }
     }
   };
 
+  const handleShare = async (postId: string) => {
+    try {
+      // Generate the direct link to the post detail view
+      const postUrl = `${window.location.origin}/post/${postId}`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(postUrl);
+      
+      toast({
+        title: "Link copied!",
+        description: "Post link has been copied to your clipboard.",
+      });
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast({
+        title: "Error",
+        description: "Failed to copy link to clipboard.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Post Composer */}
@@ -179,6 +201,7 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }
                 post={post}
                 onLike={() => handleLike(post.id)}
                 onComment={() => console.log('Comment on post', post.id)}
+                onShare={() => handleShare(post.id)}
                 onPostClick={() => onPostDetailView?.(post.id)}
                 onDelete={() => loadPosts()} // Reload posts when one is deleted
                 onUserProfileClick={onUserProfileClick}

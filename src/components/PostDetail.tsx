@@ -236,26 +236,22 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
-        const { error } = await supabase
+        await supabase
           .from('likes')
           .delete()
           .eq('user_id', currentUser.id)
           .eq('comment_id', replyId);
-          
-        if (error) throw error;
       } else {
         // Like the reply
-        const { error } = await supabase
+        await supabase
           .from('likes')
           .insert({
             user_id: currentUser.id,
             comment_id: replyId
           });
-          
-        if (error) throw error;
       }
       
-      // Reload post detail to get updated like counts and states from database
+      // Reload replies to get updated like counts from database
       await loadPostDetail();
     } catch (error) {
       // Revert optimistic update on error
@@ -274,6 +270,28 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
         title: 'Error',
         description: 'Failed to toggle like',
         variant: 'destructive'
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      // Generate the direct link to the post detail view
+      const postUrl = `${window.location.origin}/post/${postId}`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(postUrl);
+      
+      toast({
+        title: "Link copied!",
+        description: "Post link has been copied to your clipboard.",
+      });
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast({
+        title: "Error",
+        description: "Failed to copy link to clipboard.",
+        variant: "destructive"
       });
     }
   };
@@ -403,6 +421,7 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={handleShare}
                 className="flex items-center gap-2 text-muted-foreground hover:text-primary"
               >
                 <Share className="w-4 h-4" />
