@@ -23,7 +23,11 @@ const Index = () => {
   const [viewingUserProfile, setViewingUserProfile] = useState<any>(null);
   const [showBeatSwiper, setShowBeatSwiper] = useState(false);
   const [beatSwiperPostId, setBeatSwiperPostId] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'home' | 'following'>('home');
+
   const [profileLoading, setProfileLoading] = useState(false);
+
 
   useEffect(() => {
     let mounted = true;
@@ -243,6 +247,15 @@ const Index = () => {
     }
   };
 
+  const handleTabChange = (tab: 'home' | 'following') => {
+    setActiveTab(tab);
+    // Reset any detail views when changing tabs
+    setShowProfile(false);
+    setShowPostDetail(false);
+    setShowBeatSwiper(false);
+    setHighlightedPostId(null);
+  };
+
   // Create navbar user object
   const navbarUser = userProfile ? {
     name: userProfile.display_name || 'User',
@@ -327,7 +340,7 @@ const Index = () => {
       );
     }
     
-    return <Feed highlightedPostId={highlightedPostId} onPostDetailView={handlePostDetailView} onUserProfileClick={handleUserSelect} />;
+    return <Feed highlightedPostId={highlightedPostId} onPostDetailView={handlePostDetailView} onUserProfileClick={handleUserSelect} activeTab={activeTab} />;
   };
 
   if (!user) {
@@ -390,6 +403,10 @@ const Index = () => {
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
           onUserSearch={handleUserSearch}
+          onUserSelect={handleUserSelect}
+          onTabChange={handleTabChange}
+          activeTab={activeTab}
+
         />
       </div>
       

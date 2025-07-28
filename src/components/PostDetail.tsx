@@ -134,11 +134,15 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
 
       // Check which replies the current user has liked
       let userLikes: string[] = [];
-      if (currentUser && repliesData?.length) {
+      
+      // Always get fresh user data to avoid state issues
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+      
+      if (freshUser && repliesData?.length) {
         const { data: likesData } = await supabase
           .from('likes')
           .select('comment_id')
-          .eq('user_id', currentUser.id)
+          .eq('user_id', freshUser.id)
           .in('comment_id', repliesData.map(r => r.id))
           .not('comment_id', 'is', null);
         
@@ -254,8 +258,11 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
           });
       }
       
-      // Reload replies to get updated like counts from database
-      await loadPostDetail();
+      // Small delay to ensure database consistency, then reload
+      setTimeout(async () => {
+        await loadPostDetail();
+      }, 100);
+
     } catch (error) {
       // Revert optimistic update on error
       setReplies(prev => prev.map(reply => 

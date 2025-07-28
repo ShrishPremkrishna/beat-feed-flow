@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp, X } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp, X, Music, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
@@ -46,7 +46,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [sortBy, setSortBy] = useState<'likes' | 'recent' | 'my_likes'>('likes');
+  const [sortBy, setSortBy] = useState<'likes' | 'recent' | 'my_likes' | 'bpm_low' | 'bpm_high' | 'key' | 'mood'>('likes');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -61,8 +61,31 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
 
   const loadComments = async () => {
     try {
-      const orderBy = sortBy === 'likes' ? 'likes_count' : 'created_at';
-      const ascending = sortBy === 'likes' ? false : true;
+      // For basic sorting (likes, recent), use database ordering
+      // For beat-specific sorting (BPM, key, mood), fetch all and sort client-side
+      let orderBy = 'likes_count';
+      let ascending = false;
+      let useClientSideSort = false;
+      
+      if (['bpm_low', 'bpm_high', 'key', 'mood'].includes(sortBy)) {
+        useClientSideSort = true;
+        orderBy = 'created_at'; // Default order for fetching
+        ascending = false;
+      } else {
+        switch (sortBy) {
+          case 'likes':
+            orderBy = 'likes_count';
+            ascending = false;
+            break;
+          case 'recent':
+            orderBy = 'created_at';
+            ascending = false;
+            break;
+          default:
+            orderBy = 'likes_count';
+            ascending = false;
+        }
+      }
       
       const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
@@ -109,17 +132,20 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       let userLikes: string[] = [];
       let userBeatReactions: { [beatId: string]: string } = {};
       
-      if (currentUser && commentsData?.length) {
+      // Always get fresh user data to avoid state issues
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+      
+      if (freshUser && commentsData?.length) {
         const { data: likesData } = await supabase
           .from('likes')
           .select('comment_id')
-          .eq('user_id', currentUser.id)
+          .eq('user_id', freshUser.id)
           .in('comment_id', commentsData.map(c => c.id));
         
         userLikes = likesData?.map(l => l.comment_id) || [];
 
         // Also load beat reactions if this is the post owner
-        if (currentUser.id === post.user_id) {
+        if (freshUser.id === post.user_id) {
           const beatIds = commentsData
             .filter(c => c.beats?.id)
             .map(c => c.beats.id);
@@ -128,7 +154,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             const { data: reactionsData } = await supabase
               .from('beat_reactions')
               .select('beat_id, reaction')
-              .eq('user_id', currentUser.id)
+              .eq('user_id', freshUser.id)
               .in('beat_id', beatIds);
             
             userBeatReactions = reactionsData?.reduce((acc, r) => {
@@ -163,6 +189,37 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
           beatReaction: comment.beats?.id ? userBeatReactions[comment.beats.id] : null
         };
       });
+
+      // Apply client-side sorting for beat-specific options
+      if (useClientSideSort) {
+        transformedComments.sort((a, b) => {
+          // Only sort comments that have beats
+          if (!a.beat && !b.beat) return 0;
+          if (!a.beat) return 1; // Comments without beats go to the end
+          if (!b.beat) return -1; // Comments with beats go to the front
+
+          switch (sortBy) {
+            case 'bpm_low':
+              const bpmA = a.beat.bpm || 0;
+              const bpmB = b.beat.bpm || 0;
+              return bpmA - bpmB; // Ascending
+            case 'bpm_high':
+              const bpmA2 = a.beat.bpm || 0;
+              const bpmB2 = b.beat.bpm || 0;
+              return bpmB2 - bpmA2; // Descending
+            case 'key':
+              const keyA = a.beat.key || '';
+              const keyB = b.beat.key || '';
+              return keyA.localeCompare(keyB); // Alphabetical
+            case 'mood':
+              const moodA = a.beat.mood?.[0] || '';
+              const moodB = b.beat.mood?.[0] || '';
+              return moodA.localeCompare(moodB); // Alphabetical by first mood
+            default:
+              return 0;
+          }
+        });
+      }
 
       // Apply "My Likes" filtering if selected
       if (sortBy === 'my_likes' && currentUser?.id === post.user_id) {
@@ -265,23 +322,29 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
-        await supabase
+        const { error: deleteError } = await supabase
           .from('likes')
           .delete()
           .eq('user_id', currentUser.id)
           .eq('comment_id', replyId);
+        
+        if (deleteError) throw deleteError;
       } else {
         // Like the reply
-        await supabase
+        const { error: insertError } = await supabase
           .from('likes')
           .insert({
             user_id: currentUser.id,
             comment_id: replyId
           });
+        
+        if (insertError) throw insertError;
       }
       
-      // Reload comments to get updated like counts from database
-      await loadComments();
+      // Small delay to ensure database consistency, then reload
+      setTimeout(async () => {
+        await loadComments();
+      }, 100);
     } catch (error) {
       // Revert optimistic update on error
       setReplies(prev => prev.map(reply => 
@@ -468,10 +531,10 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             <span className="text-sm font-medium text-muted-foreground">
               Replies ({replies.length})
             </span>
-            <Select value={sortBy} onValueChange={(value: 'likes' | 'recent' | 'my_likes') => setSortBy(value)}>
-              <SelectTrigger className="w-[140px] h-8">
-                <SelectValue />
-              </SelectTrigger>
+                          <Select value={sortBy} onValueChange={(value: 'likes' | 'recent' | 'my_likes' | 'bpm_low' | 'bpm_high' | 'key' | 'mood') => setSortBy(value)}>
+                <SelectTrigger className="w-[160px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
               <SelectContent>
                 <SelectItem value="likes">
                   <div className="flex items-center gap-2">
@@ -493,6 +556,30 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                     </div>
                   </SelectItem>
                 )}
+                <SelectItem value="bpm_low">
+                  <div className="flex items-center gap-2">
+                    <ArrowUp className="w-3 h-3" />
+                    BPM Low→High
+                  </div>
+                </SelectItem>
+                <SelectItem value="bpm_high">
+                  <div className="flex items-center gap-2">
+                    <ArrowDown className="w-3 h-3" />
+                    BPM High→Low
+                  </div>
+                </SelectItem>
+                <SelectItem value="key">
+                  <div className="flex items-center gap-2">
+                    <Music className="w-3 h-3" />
+                    By Key
+                  </div>
+                </SelectItem>
+                <SelectItem value="mood">
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-3 h-3" />
+                    By Mood
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -1,24 +1,48 @@
 import { useState, useEffect } from 'react';
-import { Search, Bell, Settings, LogOut, User, Music, Headphones, Menu } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
+import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import { createPortal } from 'react-dom';
 
 interface NavbarProps {
   onLogoClick?: () => void;
   onUserProfileClick?: (userId: string) => void;
   onUserSearch?: (query: string) => void;
+  onUserSelect?: (userId: string) => void;
+  onTabChange?: (tab: 'home' | 'following') => void;
+  activeTab?: 'home' | 'following';
+  onProfileClick?: () => void;
+  onNotificationsClick?: () => void;
+  onLogout?: () => void;
   onPostClick?: () => void;
   onSettingsClick?: () => void;
-  onLogout?: () => void;
-  currentUser?: any;
-  userProfile?: any;
+  currentUser?: {
+    user_id?: string;
+    name: string;
+    avatar: string;
+    notifications: number;
+  };
 }
 
-export const Navbar = ({ onLogoClick, onUserProfileClick, onUserSearch, onPostClick, onSettingsClick, onLogout, currentUser, userProfile }: NavbarProps) => {
+export const Navbar = ({ 
+  onProfileClick, 
+  onNotificationsClick, 
+  onLogoClick, 
+  onLogout, 
+  onUserSearch, 
+  onUserSelect, 
+  onTabChange,
+  activeTab = 'home',
+  onPostClick,
+  onSettingsClick,
+  onUserProfileClick,
+  currentUser 
+}: NavbarProps) => {
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -29,6 +53,7 @@ export const Navbar = ({ onLogoClick, onUserProfileClick, onUserSearch, onPostCl
   }, []);
 
   const defaultUser = {
+    user_id: '',
     name: 'Current User',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
     notifications: 3
@@ -99,6 +124,36 @@ export const Navbar = ({ onLogoClick, onUserProfileClick, onUserSearch, onPostCl
               </div>
             </div>
 
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-6 mx-8">
+              <Button
+                variant={activeTab === 'home' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onTabChange?.('home')}
+                className={`flex items-center gap-2 ${
+                  activeTab === 'home' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Home className="w-4 h-4" />
+                Home
+              </Button>
+              <Button
+                variant={activeTab === 'following' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onTabChange?.('following')}
+                className={`flex items-center gap-2 ${
+                  activeTab === 'following' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Heart className="w-4 h-4" />
+                Following
+              </Button>
+            </div>
+
             {/* Search Bar */}
             <div className="flex-1 max-w-md mx-8 relative">
               <div className="relative">
@@ -112,43 +167,38 @@ export const Navbar = ({ onLogoClick, onUserProfileClick, onUserSearch, onPostCl
                   onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
                   className="pl-10 bg-muted border-muted-foreground/20 focus:border-primary"
                 />
-                
-                {/* Search Results Dropdown */}
-                {isMounted && showSearchResults && searchResults.length > 0 && createPortal(
-                  <div className="fixed top-20 left-1/2 transform -translate-x-1/2 w-96 bg-background border border-border rounded-lg shadow-xl z-[9999]">
-                    {searchResults.map((profile) => (
-                      <div
-                        key={profile.user_id}
-                        onClick={() => handleUserSelect(profile.user_id)}
-                        className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors first:rounded-t-lg last:rounded-b-lg"
-                      >
-                        {profile.avatar_url ? (
-                          <img 
-                            src={profile.avatar_url} 
-                            alt={profile.display_name || profile.username}
-                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-bold">
-                              {(profile.display_name || profile.username || 'U').charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium truncate">{profile.display_name || 'Anonymous'}</div>
-                          <div className="text-sm text-muted-foreground truncate">@{profile.username}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>,
-                  document.body
-                )}
               </div>
+
+              {/* Search Results Dropdown */}
+              {showSearchResults && searchResults.length > 0 && isMounted && createPortal(
+                <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                  {searchResults.map((profile) => (
+                    <div
+                      key={profile.user_id}
+                      className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
+                      onClick={() => handleUserSelect(profile.user_id)}
+                    >
+                      <InitialsAvatar
+                        name={profile.display_name || profile.username}
+                        avatarUrl={profile.avatar_url}
+                        size="sm"
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sm">{profile.display_name || profile.username}</span>
+                        {profile.display_name && profile.username && (
+                          <span className="text-xs text-muted-foreground">@{profile.username}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>,
+                document.body
+              )}
             </div>
 
             {/* User Profile */}
             <div className="flex items-center gap-4">
+
 
               {/* User Profile Dropdown */}
               <DropdownMenu>
@@ -157,22 +207,16 @@ export const Navbar = ({ onLogoClick, onUserProfileClick, onUserSearch, onPostCl
                     variant="ghost"
                     className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors"
                   >
-                    {user.avatar ? (
-                      <img 
-                        src={user.avatar} 
-                        alt={user.name}
-                        className="w-8 h-8 rounded-full object-cover border-2 border-primary/20"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center border-2 border-primary/20">
-                        <User className="w-4 h-4" />
-                      </div>
-                    )}
+                    <InitialsAvatar
+                      name={user.name}
+                      avatarUrl={user.avatar}
+                      size="sm"
+                    />
                     <span className="font-medium hidden sm:block">{user.name}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => onUserProfileClick?.(user.user_id)} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => onUserProfileClick?.(user.user_id || '')} className="cursor-pointer">
                     <User className="w-4 h-4 mr-2" />
                     View Profile
                   </DropdownMenuItem>

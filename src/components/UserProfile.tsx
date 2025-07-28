@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft, MessageCircle, Heart, Play } from 'lucide-react';
+import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft, MessageCircle, Heart, Play, Volume2, Youtube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPost } from './UserPost';
 import { ProfileEditModal } from './ProfileEditModal';
 import { BeatPlayer } from './BeatPlayer';
+
+import { InitialsAvatar } from '@/components/ui/initials-avatar';
+
 import { ShareModal } from './ShareModal';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,22 +45,30 @@ interface UserProfileProps {
   userId?: string;
 }
 
-export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostClick, userId }: UserProfileProps) => {
-  const [isFollowing, setIsFollowing] = useState(false);
+export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, userId }: UserProfileProps) => {
   const [showEditModal, setShowEditModal] = useState(false);
-  const [currentProfile, setCurrentProfile] = useState(user);
+  const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [userReplies, setUserReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  
+  // All stats as state variables
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [showFollowersList, setShowFollowersList] = useState(false);
-  const [showFollowingList, setShowFollowingList] = useState(false);
+  const [beatsCount, setBeatsCount] = useState(0);
+  const [likesCount, setLikesCount] = useState(0);
+  
   const [followersList, setFollowersList] = useState<any[]>([]);
   const [followingList, setFollowingList] = useState<any[]>([]);
+
+  const [showFollowersList, setShowFollowersList] = useState(false);
+  const [showFollowingList, setShowFollowingList] = useState(false);
+
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const { toast } = useToast();
+
 
   const defaultUser = {
     name: 'BeatMaker Pro',
@@ -86,9 +98,10 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
   const profileUser = currentProfile || user || defaultUser;
 
   useEffect(() => {
+    loadUserActivity();
     if (userId) {
-      loadUserActivity();
       checkFollowStatus();
+      loadProfileStats();
     }
   }, [userId]);
 
@@ -245,6 +258,11 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
         setIsFollowing(true);
         setFollowersCount(prev => prev + 1);
       }
+      
+      // Reload stats to ensure they're accurate
+      setTimeout(() => {
+        loadProfileStats();
+      }, 100);
     } catch (error) {
       console.error('Error toggling follow:', error);
     }
@@ -303,6 +321,40 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
       setShowFollowingList(true);
     } catch (error) {
       console.error('Error loading following:', error);
+    }
+  };
+
+  const loadProfileStats = async () => {
+    try {
+      let targetUserId = userId;
+      
+      // If no userId provided, try to get it from the current user
+      if (!targetUserId) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        targetUserId = currentUser?.id;
+      }
+      
+      if (!targetUserId) return;
+
+      const { data: profileStats, error } = await supabase
+        .from('profiles')
+        .select('followers_count, following_count, beats_count, likes_count')
+        .eq('user_id', targetUserId)
+        .single();
+
+      if (error) {
+        console.error('Error loading profile stats:', error);
+        return;
+      }
+
+      if (profileStats) {
+        setFollowersCount(profileStats.followers_count || 0);
+        setFollowingCount(profileStats.following_count || 0);
+        setBeatsCount(profileStats.beats_count || 0);
+        setLikesCount(profileStats.likes_count || 0);
+      }
+    } catch (error) {
+      console.error('Error loading profile stats:', error);
     }
   };
 
@@ -431,19 +483,11 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
         <div className="flex flex-col md:flex-row gap-6">
           {/* Avatar */}
           <div className="relative">
-            {profileUser.avatar ? (
-              <img 
-                src={profileUser.avatar} 
-                alt={profileUser.name}
-                className="w-32 h-32 rounded-full object-cover border-4 border-primary/20"
-              />
-            ) : (
-              <div className="w-32 h-32 rounded-full bg-muted border-4 border-primary/20 flex items-center justify-center">
-                <span className="text-4xl font-bold text-muted-foreground">
-                  {profileUser.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+            <InitialsAvatar
+              name={profileUser.name}
+              avatarUrl={profileUser.avatar}
+              size="xl"
+            />
             {profileUser.isVerified && (
               <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                 <Star className="w-4 h-4 text-white fill-current" />
@@ -488,23 +532,53 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
             </div>
 
             {/* Social Links */}
-            <div className="flex items-center gap-3">
-              {profileUser.social.instagram && (
-                <Button variant="outline" size="sm">
-                  <Instagram className="w-4 h-4 mr-2" />
-                  Instagram
+            <div className="flex items-center gap-3 flex-wrap">
+              {profileUser.instagram && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`https://instagram.com/${profileUser.instagram}`} target="_blank" rel="noopener noreferrer">
+                    <Instagram className="w-4 h-4 mr-2" />
+                    Instagram
+                  </a>
                 </Button>
               )}
-              {profileUser.social.twitter && (
-                <Button variant="outline" size="sm">
-                  <Twitter className="w-4 h-4 mr-2" />
-                  Twitter
+              {profileUser.twitter && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`https://twitter.com/${profileUser.twitter}`} target="_blank" rel="noopener noreferrer">
+                    <Twitter className="w-4 h-4 mr-2" />
+                    Twitter
+                  </a>
                 </Button>
               )}
-              {profileUser.social.beatstars && (
-                <Button variant="outline" size="sm">
-                  <Music className="w-4 h-4 mr-2" />
-                  BeatStars
+              {profileUser.beatstars && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`https://beatstars.com/${profileUser.beatstars}`} target="_blank" rel="noopener noreferrer">
+                    <Music className="w-4 h-4 mr-2" />
+                    BeatStars
+                  </a>
+                </Button>
+              )}
+              {profileUser.soundcloud && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`https://soundcloud.com/${profileUser.soundcloud}`} target="_blank" rel="noopener noreferrer">
+                    <Volume2 className="w-4 h-4 mr-2" />
+                    SoundCloud
+                  </a>
+                </Button>
+              )}
+              {profileUser.spotify && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`https://open.spotify.com/artist/${profileUser.spotify}`} target="_blank" rel="noopener noreferrer">
+                    <Music className="w-4 h-4 mr-2" />
+                    Spotify
+                  </a>
+                </Button>
+              )}
+              {profileUser.youtube && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`https://youtube.com/@${profileUser.youtube}`} target="_blank" rel="noopener noreferrer">
+                    <Youtube className="w-4 h-4 mr-2" />
+                    YouTube
+                  </a>
                 </Button>
               )}
             </div>
@@ -550,11 +624,11 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
             <div className="text-sm text-muted-foreground">Following</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-foreground">{profileUser.stats.beats}</div>
+            <div className="text-2xl font-bold text-foreground">{beatsCount}</div>
             <div className="text-sm text-muted-foreground">Beats</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-foreground">{profileUser.stats.likes.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-foreground">{likesCount.toLocaleString()}</div>
             <div className="text-sm text-muted-foreground">Total Likes</div>
           </div>
         </div>
