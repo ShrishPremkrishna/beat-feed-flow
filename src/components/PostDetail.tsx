@@ -249,6 +249,9 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
             comment_id: replyId
           });
       }
+      
+      // Reload post detail to get updated like counts and states from database
+      await loadPostDetail();
     } catch (error) {
       // Revert optimistic update on error
       setReplies(prev => prev.map(reply => 
