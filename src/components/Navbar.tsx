@@ -96,11 +96,19 @@ export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, curr
               onClick={onProfileClick}
               className="flex items-center gap-2"
             >
-              <img 
-                src={user.avatar} 
-                alt={user.name}
-                className="w-8 h-8 rounded-full object-cover border border-primary/20"
-              />
+              {user.avatar ? (
+                <img 
+                  src={user.avatar} 
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full object-cover border border-primary/20"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-muted border border-primary/20 flex items-center justify-center">
+                  <span className="text-sm font-bold text-muted-foreground">
+                    {user.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
               <span className="hidden md:inline text-sm font-medium">{user.name}</span>
             </Button>
 

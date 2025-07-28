@@ -56,15 +56,50 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a JPEG, PNG, WebP, or GIF image.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user found');
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `avatar-${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      // First, try to delete any existing avatar
+      const oldAvatarPath = formData.avatar_url?.split('/').pop();
+      if (oldAvatarPath && oldAvatarPath !== fileName) {
+        await supabase.storage.from('avatars').remove([oldAvatarPath]);
+      }
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
       if (uploadError) {
+        console.error('Upload error:', uploadError);
         throw uploadError;
       }
 
@@ -162,7 +197,7 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
               <input
                 id="avatar-upload"
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                 onChange={handleAvatarUpload}
                 className="hidden"
                 disabled={uploading}

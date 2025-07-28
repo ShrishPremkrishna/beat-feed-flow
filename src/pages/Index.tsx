@@ -86,9 +86,9 @@ const Index = () => {
 
   // Create navbar user object
   const navbarUser = userProfile ? {
-    name: userProfile.display_name || userProfile.username || 'User',
-    avatar: userProfile.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
-    notifications: 0 // You can implement notifications later
+    name: userProfile.display_name || 'User',
+    avatar: userProfile.avatar_url || '',
+    notifications: 0
   } : undefined;
 
   const renderContent = () => {
@@ -98,7 +98,7 @@ const Index = () => {
           user={userProfile ? {
             name: userProfile.display_name || 'Anonymous User',
             username: userProfile.username || '@user',
-            avatar: userProfile.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
+            avatar: userProfile.avatar_url || '',
             bio: userProfile.bio || 'No bio available',
             location: userProfile.location || 'Unknown',
             joinDate: userProfile.created_at ? new Date(userProfile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently',

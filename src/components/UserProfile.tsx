@@ -110,11 +110,19 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
         <div className="flex flex-col md:flex-row gap-6">
           {/* Avatar */}
           <div className="relative">
-            <img 
-              src={profileUser.avatar} 
-              alt={profileUser.name}
-              className="w-32 h-32 rounded-full object-cover border-4 border-primary/20"
-            />
+            {profileUser.avatar ? (
+              <img 
+                src={profileUser.avatar} 
+                alt={profileUser.name}
+                className="w-32 h-32 rounded-full object-cover border-4 border-primary/20"
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-full bg-muted border-4 border-primary/20 flex items-center justify-center">
+                <span className="text-4xl font-bold text-muted-foreground">
+                  {profileUser.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             {profileUser.isVerified && (
               <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                 <Star className="w-4 h-4 text-white fill-current" />
