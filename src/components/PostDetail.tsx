@@ -221,6 +221,17 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
       return;
     }
 
+    // Optimistic update
+    setReplies(prev => prev.map(reply => 
+      reply.id === replyId 
+        ? { 
+            ...reply, 
+            isLiked: !isCurrentlyLiked, 
+            likes: isCurrentlyLiked ? reply.likes - 1 : reply.likes + 1 
+          }
+        : reply
+    ));
+
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
@@ -238,10 +249,18 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
             comment_id: replyId
           });
       }
-
-      // Refresh replies to show updated like count
-      loadPostDetail();
     } catch (error) {
+      // Revert optimistic update on error
+      setReplies(prev => prev.map(reply => 
+        reply.id === replyId 
+          ? { 
+              ...reply, 
+              isLiked: isCurrentlyLiked, 
+              likes: isCurrentlyLiked ? reply.likes + 1 : reply.likes - 1 
+            }
+          : reply
+      ));
+      
       console.error('Error toggling reply like:', error);
       toast({
         title: 'Error',

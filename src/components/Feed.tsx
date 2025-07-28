@@ -47,6 +47,8 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
 
   const loadPosts = async () => {
     try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
       // Load posts only
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
@@ -66,6 +68,18 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
 
       if (profilesError) throw profilesError;
 
+      // Check which posts the current user has liked
+      let userLikes: string[] = [];
+      if (currentUser && postsData?.length) {
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('post_id')
+          .eq('user_id', currentUser.id)
+          .in('post_id', postsData.map(p => p.id));
+        
+        userLikes = likesData?.map(l => l.post_id) || [];
+      }
+
       // Create a map of user_id to profile for quick lookup
       const profileMap = new Map();
       profilesData?.forEach(profile => {
@@ -83,7 +97,8 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
           },
           timestamp: new Date(post.created_at).toLocaleString(),
           likes: post.likes_count || 0,
-          comments: post.comments_count || 0
+          comments: post.comments_count || 0,
+          isLiked: userLikes.includes(post.id)
         };
       }) || [];
 
@@ -107,12 +122,59 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
     setPosts(prev => [post, ...prev]);
   };
 
-  const handleLike = (id: string, type: 'post') => {
-    setPosts(prev => prev.map(post => 
-      post.id === id 
-        ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-        : post
+  const handleLike = async (postId: string) => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
+      toast({
+        title: 'Please log in',
+        description: 'You need to be logged in to like posts',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const post = posts.find(p => p.id === postId);
+    const isCurrentlyLiked = post?.isLiked;
+
+    // Optimistic update
+    setPosts(prev => prev.map(p => 
+      p.id === postId 
+        ? { ...p, isLiked: !isCurrentlyLiked, likes: isCurrentlyLiked ? p.likes - 1 : p.likes + 1 }
+        : p
     ));
+
+    try {
+      if (isCurrentlyLiked) {
+        // Unlike the post
+        await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('post_id', postId);
+      } else {
+        // Like the post
+        await supabase
+          .from('likes')
+          .insert({
+            user_id: currentUser.id,
+            post_id: postId
+          });
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setPosts(prev => prev.map(p => 
+        p.id === postId 
+          ? { ...p, isLiked: isCurrentlyLiked, likes: isCurrentlyLiked ? p.likes + 1 : p.likes - 1 }
+          : p
+      ));
+      
+      console.error('Error toggling like:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to toggle like',
+        variant: 'destructive'
+      });
+    }
   };
 
   return (
@@ -131,7 +193,7 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
           >
             <UserPost 
               post={post}
-              onLike={() => handleLike(post.id, 'post')}
+              onLike={() => handleLike(post.id)}
               onComment={() => console.log('Comment on post', post.id)}
               onPostClick={() => onPostDetailView?.(post.id)}
               onDelete={() => loadPosts()} // Reload posts when one is deleted
