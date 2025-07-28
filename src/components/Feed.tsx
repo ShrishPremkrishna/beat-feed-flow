@@ -8,29 +8,81 @@ interface FeedProps {
   highlightedPostId?: string | null;
   onPostDetailView?: (postId: string) => void;
   onUserProfileClick?: (userId: string) => void;
+  activeTab?: 'home' | 'following';
 }
 
-
-export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }: FeedProps) => {
+export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, activeTab = 'home' }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     loadPosts();
-  }, []);
+  }, [activeTab]); // Reload posts when tab changes
 
   const loadPosts = async () => {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      // Load posts only
-      const { data: postsData, error: postsError } = await supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let postsData;
+      
+      if (activeTab === 'following' && currentUser) {
+        // Load posts from followed users + discover content
+        
+        // First, get users that current user follows
+        const { data: followsData } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUser.id);
+        
+        const followingIds = followsData?.map(follow => follow.following_id) || [];
+        
+        if (followingIds.length > 0) {
+          // Load posts from followed users
+          const { data: followedPosts, error: followedError } = await supabase
+            .from('posts')
+            .select('*')
+            .in('user_id', followingIds)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          
+          if (followedError) throw followedError;
+          
+          // Also load some discover content (posts from users not followed)
+          const { data: discoverPosts, error: discoverError } = await supabase
+            .from('posts')
+            .select('*')
+            .not('user_id', 'in', `(${followingIds.join(',')})`)
+            .not('user_id', 'eq', currentUser.id) // Don't include current user's posts
+            .order('likes_count', { ascending: false }) // Show popular posts
+            .limit(10);
+          
+          if (discoverError) throw discoverError;
+          
+          // Combine and sort by created_at
+          postsData = [...(followedPosts || []), ...(discoverPosts || [])]
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        } else {
+          // If user doesn't follow anyone, show discover content
+          const { data: allPosts, error: allError } = await supabase
+            .from('posts')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(30);
+          
+          if (allError) throw allError;
+          postsData = allPosts;
+        }
+      } else {
+        // Load all posts for Home tab (original behavior)
+        const { data: allPosts, error: postsError } = await supabase
+          .from('posts')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (postsError) throw postsError;
+        if (postsError) throw postsError;
+        postsData = allPosts;
+      }
 
       // Get unique user IDs from posts
       const postUserIds = postsData?.map(post => post.user_id) || [];
@@ -45,11 +97,15 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }
 
       // Check which posts the current user has liked
       let userLikes: string[] = [];
-      if (currentUser && postsData?.length) {
+      
+      // Always get fresh user data to avoid state issues
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+      
+      if (freshUser && postsData?.length) {
         const { data: likesData } = await supabase
           .from('likes')
           .select('post_id')
-          .eq('user_id', currentUser.id)
+          .eq('user_id', freshUser.id)
           .in('post_id', postsData.map(p => p.id));
         
         userLikes = likesData?.map(l => l.post_id) || [];
@@ -124,20 +180,29 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }
     try {
       if (isCurrentlyLiked) {
         // Unlike the post
-        await supabase
+        const { error: deleteError } = await supabase
           .from('likes')
           .delete()
           .eq('user_id', currentUser.id)
           .eq('post_id', postId);
+        
+        if (deleteError) throw deleteError;
       } else {
         // Like the post
-        await supabase
+        const { error: insertError } = await supabase
           .from('likes')
           .insert({
             user_id: currentUser.id,
             post_id: postId
           });
+        
+        if (insertError) throw insertError;
       }
+      
+      // Reload posts to ensure state is synchronized with database
+      setTimeout(() => {
+        loadPosts();
+      }, 100);
     } catch (error) {
       // Revert optimistic update on error
       setPosts(prev => prev.map(p => 
@@ -164,8 +229,19 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }
       <div className="space-y-6">
         {posts.length === 0 && !loading ? (
           <div className="beat-card text-center py-12">
-            <div className="text-muted-foreground text-lg mb-2">No posts yet</div>
-            <div className="text-muted-foreground text-sm">Be the first to share something!</div>
+            {activeTab === 'following' ? (
+              <>
+                <div className="text-muted-foreground text-lg mb-2">No posts from followed users</div>
+                <div className="text-muted-foreground text-sm">
+                  Start following some artists to see their posts here, or switch to Home to discover new content!
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-muted-foreground text-lg mb-2">No posts yet</div>
+                <div className="text-muted-foreground text-sm">Be the first to share something!</div>
+              </>
+            )}
           </div>
         ) : (
           posts.map((post) => (

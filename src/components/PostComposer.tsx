@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileUploadArea } from '@/components/FileUploadArea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -30,12 +31,21 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     price: ''
   });
   const [showBeatUpload, setShowBeatUpload] = useState(false);
+  const [hasExistingBeat, setHasExistingBeat] = useState(false);
+  const [showProPlanModal, setShowProPlanModal] = useState(false);
   const { toast } = useToast();
 
   // Load user profile data
   useEffect(() => {
     loadUserProfile();
   }, []);
+
+  // Check if user has already submitted a beat to this post
+  useEffect(() => {
+    if (isReply && parentPostId) {
+      checkExistingBeatSubmission();
+    }
+  }, [isReply, parentPostId]);
 
   const loadUserProfile = async () => {
     try {
@@ -54,8 +64,40 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     }
   };
 
+  const checkExistingBeatSubmission = async () => {
+    if (!parentPostId) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check if user has already submitted a beat reply to this post
+      const { data: existingBeat, error } = await supabase
+        .from('comments')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('post_id', parentPostId)
+        .not('beat_id', 'is', null)
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking existing beat submission:', error);
+        return;
+      }
+
+      setHasExistingBeat(existingBeat && existingBeat.length > 0);
+    } catch (error) {
+      console.error('Error checking existing beat submission:', error);
+    }
+  };
+
   const handleFileUpload = (file: File, type: 'beat' | 'cover') => {
     if (type === 'beat') {
+      // Check if user already has a beat submission for this post
+      if (isReply && hasExistingBeat) {
+        setShowProPlanModal(true);
+        return;
+      }
       setBeatFile(file);
       setShowBeatUpload(true);
     } else {
@@ -409,6 +451,61 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
           {isLoading ? 'Posting...' : (isReply ? 'Reply with Beat' : 'Post')}
         </Button>
       </div>
+
+      {/* Pro Plan Upgrade Modal */}
+      <Dialog open={showProPlanModal} onOpenChange={setShowProPlanModal}>
+        <DialogContent className="sm:max-w-md bg-gradient-card border-border">
+          <DialogHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+                <Music className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Upgrade to Pro
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              You've already submitted a beat to this post. Upgrade to Pro to submit multiple beats and unlock more features!
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold text-foreground">Pro Features:</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Submit multiple beats per post</li>
+                <li>• Priority support</li>
+                <li>• Advanced analytics</li>
+                <li>• Enhanced profile customization</li>
+                <li>• Exclusive beat packs</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowProPlanModal(false)}
+                className="flex-1"
+              >
+                Maybe Later
+              </Button>
+              <Button
+                onClick={() => {
+                  // TODO: Implement pro plan upgrade flow
+                  toast({
+                    title: "Coming Soon!",
+                    description: "Pro plan upgrade is being implemented.",
+                  });
+                  setShowProPlanModal(false);
+                }}
+                className="btn-gradient flex-1"
+              >
+                Upgrade Now
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

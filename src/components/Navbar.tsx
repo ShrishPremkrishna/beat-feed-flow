@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Search, Bell, User, Menu, Music, Headphones, LogOut } from 'lucide-react';
+import { Search, Bell, User, Menu, Music, Headphones, LogOut, Home, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
+import { InitialsAvatar } from '@/components/ui/initials-avatar';
 
 interface NavbarProps {
   onProfileClick?: () => void;
@@ -13,6 +14,8 @@ interface NavbarProps {
   onLogout?: () => void;
   onUserSearch?: (query: string) => void;
   onUserSelect?: (userId: string) => void;
+  onTabChange?: (tab: 'home' | 'following') => void;
+  activeTab?: 'home' | 'following';
   currentUser?: {
     name: string;
     avatar: string;
@@ -20,7 +23,17 @@ interface NavbarProps {
   };
 }
 
-export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, onLogout, onUserSearch, onUserSelect, currentUser }: NavbarProps) => {
+export const Navbar = ({ 
+  onProfileClick, 
+  onNotificationsClick, 
+  onLogoClick, 
+  onLogout, 
+  onUserSearch, 
+  onUserSelect, 
+  onTabChange,
+  activeTab = 'home',
+  currentUser 
+}: NavbarProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -95,6 +108,36 @@ export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, onLo
             </div>
           </div>
 
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-6 mx-8">
+            <Button
+              variant={activeTab === 'home' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onTabChange?.('home')}
+              className={`flex items-center gap-2 ${
+                activeTab === 'home' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              Home
+            </Button>
+            <Button
+              variant={activeTab === 'following' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onTabChange?.('following')}
+              className={`flex items-center gap-2 ${
+                activeTab === 'following' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Heart className="w-4 h-4" />
+              Following
+            </Button>
+          </div>
+
           {/* Search Bar */}
           <div className="flex-1 max-w-md mx-8 relative">
             <div className="relative">
@@ -166,17 +209,11 @@ export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, onLo
                   variant="ghost"
                   className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors"
                 >
-                  {user.avatar ? (
-                    <img 
-                      src={user.avatar} 
-                      alt={user.name}
-                      className="w-8 h-8 rounded-full object-cover border-2 border-primary/20"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center border-2 border-primary/20">
-                      <User className="w-4 h-4" />
-                    </div>
-                  )}
+                  <InitialsAvatar
+                    name={user.name}
+                    avatarUrl={user.avatar}
+                    size="sm"
+                  />
                   <span className="font-medium hidden sm:block">{user.name}</span>
                 </Button>
               </DropdownMenuTrigger>
