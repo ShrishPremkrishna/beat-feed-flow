@@ -31,16 +31,19 @@ export const FileUploadArea = ({
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(true);
   };
 
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
   };
 
   const handleDrop = (e: DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
     
     const files = e.dataTransfer.files;
@@ -102,9 +105,17 @@ export const FileUploadArea = ({
     if (file) {
       handleFileSelect(file);
     }
+    // Clear the input value to allow selecting the same file again
+    if (e.target) {
+      e.target.value = '';
+    }
   };
 
   const handleClick = () => {
+    // Clear any previous value to ensure onChange fires reliably
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     fileInputRef.current?.click();
   };
 
@@ -150,7 +161,10 @@ export const FileUploadArea = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={handleClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleClick();
+        }}
         className={`
           border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
           ${isDragOver 
@@ -180,7 +194,15 @@ export const FileUploadArea = ({
             </p>
           </div>
           
-          <Button variant="outline" size="sm" type="button">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClick();
+            }}
+          >
             <Upload className="w-4 h-4 mr-2" />
             Browse Files
           </Button>
