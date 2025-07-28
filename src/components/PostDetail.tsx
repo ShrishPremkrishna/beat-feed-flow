@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Copy, MoreHorizontal, Trash2, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
@@ -424,7 +424,7 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
                 onClick={handleShare}
                 className="flex items-center gap-2 text-muted-foreground hover:text-primary"
               >
-                <Share className="w-4 h-4" />
+                <Copy className="w-4 h-4" />
                 <span>Share</span>
               </Button>
             </div>
