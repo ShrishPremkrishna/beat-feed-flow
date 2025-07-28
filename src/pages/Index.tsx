@@ -82,6 +82,10 @@ const Index = () => {
 
   const handleBackToFeed = () => {
     setShowProfile(false);
+    // Refresh profile data when going back to feed
+    if (user) {
+      fetchUserProfile(user.id);
+    }
   };
 
   // Create navbar user object

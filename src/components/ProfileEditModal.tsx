@@ -52,13 +52,20 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
+      console.log('Starting avatar upload...');
       
       const file = event.target.files?.[0];
-      if (!file) return;
+      if (!file) {
+        console.log('No file selected');
+        return;
+      }
+
+      console.log('File selected:', file.name, file.type, file.size);
 
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
       if (!allowedTypes.includes(file.type)) {
+        console.log('Invalid file type:', file.type);
         toast({
           title: "Invalid file type",
           description: "Please upload a JPEG, PNG, WebP, or GIF image.",
@@ -70,6 +77,7 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
+        console.log('File too large:', file.size);
         toast({
           title: "File too large",
           description: "Please upload an image smaller than 5MB.",
@@ -79,33 +87,58 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No authenticated user found');
+      if (!user) {
+        console.log('No authenticated user found');
+        throw new Error('No authenticated user found');
+      }
+
+      console.log('User authenticated:', user.id);
 
       const fileExt = file.name.split('.').pop()?.toLowerCase();
       const fileName = `avatar-${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = fileName;
+      console.log('Generated filename:', fileName);
 
       // First, try to delete any existing avatar
       const oldAvatarPath = formData.avatar_url?.split('/').pop();
       if (oldAvatarPath && oldAvatarPath !== fileName) {
+        console.log('Removing old avatar:', oldAvatarPath);
         await supabase.storage.from('avatars').remove([oldAvatarPath]);
       }
 
-      const { error: uploadError } = await supabase.storage
+      console.log('Uploading to storage...');
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, {
+        .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
+        console.error('Storage upload error:', uploadError);
         throw uploadError;
       }
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      console.log('Upload successful:', uploadData);
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      console.log('Generated public URL:', urlData.publicUrl);
       
-      setFormData(prev => ({ ...prev, avatar_url: data.publicUrl }));
+      // Update form data immediately
+      setFormData(prev => ({ ...prev, avatar_url: urlData.publicUrl }));
+      
+      // Also update the database immediately
+      console.log('Updating database...');
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: urlData.publicUrl })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        throw updateError;
+      }
+
+      console.log('Database updated successfully');
       
       toast({
         title: "Avatar uploaded successfully",
@@ -115,7 +148,7 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       console.error('Error uploading avatar:', error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload avatar. Please try again.",
+        description: `Failed to upload avatar: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -131,7 +164,9 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      const { error } = await supabase
+      console.log('Updating profile with data:', formData);
+
+      const { error, data } = await supabase
         .from('profiles')
         .update({
           display_name: formData.display_name,
@@ -140,12 +175,17 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
           location: formData.location,
           website: formData.website,
           avatar_url: formData.avatar_url,
-          // Store social links as JSON or separate columns based on your schema
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Profile update error:', error);
+        throw error;
+      }
+
+      console.log('Profile updated successfully:', data);
 
       // Update the profile in parent component
       onProfileUpdate({
@@ -163,7 +203,7 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       console.error('Error updating profile:', error);
       toast({
         title: "Update failed",
-        description: "Failed to update profile. Please try again.",
+        description: `Failed to update profile: ${error.message}`,
         variant: "destructive",
       });
     } finally {
