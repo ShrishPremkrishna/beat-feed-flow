@@ -91,6 +91,7 @@ export type Database = {
           content: string | null
           created_at: string
           id: string
+          likes_count: number | null
           post_id: string | null
           updated_at: string
           user_id: string
@@ -100,6 +101,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           id?: string
+          likes_count?: number | null
           post_id?: string | null
           updated_at?: string
           user_id: string
@@ -109,6 +111,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           id?: string
+          likes_count?: number | null
           post_id?: string | null
           updated_at?: string
           user_id?: string
@@ -154,6 +157,7 @@ export type Database = {
       likes: {
         Row: {
           beat_id: string | null
+          comment_id: string | null
           created_at: string
           id: string
           post_id: string | null
@@ -161,6 +165,7 @@ export type Database = {
         }
         Insert: {
           beat_id?: string | null
+          comment_id?: string | null
           created_at?: string
           id?: string
           post_id?: string | null
@@ -168,6 +173,7 @@ export type Database = {
         }
         Update: {
           beat_id?: string | null
+          comment_id?: string | null
           created_at?: string
           id?: string
           post_id?: string | null
@@ -179,6 +185,13 @@ export type Database = {
             columns: ["beat_id"]
             isOneToOne: false
             referencedRelation: "beats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
             referencedColumns: ["id"]
           },
           {
