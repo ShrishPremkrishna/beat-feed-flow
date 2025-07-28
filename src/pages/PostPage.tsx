@@ -163,6 +163,7 @@ const PostPage = () => {
           <PostDetail 
             postId={postId}
             onBack={handleBackToFeed}
+            onUserProfileClick={handleUserSelect}
           />
         </div>
       </main>

@@ -87,7 +87,6 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
       {/* Beat Info */}
       <div className="space-y-2">
         <h4 className="font-semibold text-base text-foreground">{title}</h4>
-        {artist && <p className="text-sm text-muted-foreground">by {artist}</p>}
         
         {/* Beat Details */}
         <div className="flex gap-3 text-xs text-muted-foreground">
