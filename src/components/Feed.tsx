@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { PostComposer } from './PostComposer';
 import { UserPost } from './UserPost';
+import { ShareModal } from './ShareModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,6 +15,8 @@ interface FeedProps {
 export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -155,26 +158,11 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }
     }
   };
 
-  const handleShare = async (postId: string) => {
-    try {
-      // Generate the direct link to the post detail view
-      const postUrl = `${window.location.origin}/post/${postId}`;
-      
-      // Copy to clipboard
-      await navigator.clipboard.writeText(postUrl);
-      
-      toast({
-        title: "Link copied!",
-        description: "Post link has been copied to your clipboard.",
-      });
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      toast({
-        title: "Error",
-        description: "Failed to copy link to clipboard.",
-        variant: "destructive"
-      });
-    }
+  const handleShare = (postId: string) => {
+    // Generate the direct link to the post detail view
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    setShareUrl(postUrl);
+    setShowShareModal(true);
   };
 
   return (
@@ -215,6 +203,14 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick }
       <div className="flex justify-center py-8">
         <div className="text-muted-foreground animate-pulse">Loading more content...</div>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        url={shareUrl}
+        title="Share Post"
+      />
     </div>
   );
 };

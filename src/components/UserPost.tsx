@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Copy, MoreHorizontal, Trash2, Clock, TrendingUp, X } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
@@ -429,7 +429,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             }}
             className="flex items-center gap-2 text-muted-foreground"
           >
-            <Copy className="w-4 h-4" />
+            <Share className="w-4 h-4" />
           </Button>
           
           {/* Review Beats Button (only for post owner) */}

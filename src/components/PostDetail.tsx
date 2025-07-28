@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MessageCircle, Copy, MoreHorizontal, Trash2, Clock, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
+import { ShareModal } from './ShareModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -31,6 +32,8 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sortBy, setSortBy] = useState<'likes' | 'recent'>('likes');
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -274,26 +277,11 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
     }
   };
 
-  const handleShare = async () => {
-    try {
-      // Generate the direct link to the post detail view
-      const postUrl = `${window.location.origin}/post/${postId}`;
-      
-      // Copy to clipboard
-      await navigator.clipboard.writeText(postUrl);
-      
-      toast({
-        title: "Link copied!",
-        description: "Post link has been copied to your clipboard.",
-      });
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      toast({
-        title: "Error",
-        description: "Failed to copy link to clipboard.",
-        variant: "destructive"
-      });
-    }
+  const handleShare = () => {
+    // Generate the direct link to the post detail view
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    setShareUrl(postUrl);
+    setShowShareModal(true);
   };
 
   if (loading) {
@@ -424,7 +412,7 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
                 onClick={handleShare}
                 className="flex items-center gap-2 text-muted-foreground hover:text-primary"
               >
-                <Copy className="w-4 h-4" />
+                <Share className="w-4 h-4" />
                 <span>Share</span>
               </Button>
             </div>
@@ -561,6 +549,14 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
           ))
         )}
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        url={shareUrl}
+        title="Share Post"
+      />
     </div>
   );
 };
