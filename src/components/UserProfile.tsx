@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPost } from './UserPost';
 import { ProfileEditModal } from './ProfileEditModal';
 import { BeatPlayer } from './BeatPlayer';
+import { ShareModal } from './ShareModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -53,6 +54,8 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
   const [showFollowingList, setShowFollowingList] = useState(false);
   const [followersList, setFollowersList] = useState<any[]>([]);
   const [followingList, setFollowingList] = useState<any[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const { toast } = useToast();
 
   const defaultUser = {
@@ -307,26 +310,11 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
     setCurrentProfile(updatedProfile);
   };
 
-  const handleShare = async (postId: string) => {
-    try {
-      // Generate the direct link to the post detail view
-      const postUrl = `${window.location.origin}/post/${postId}`;
-      
-      // Copy to clipboard
-      await navigator.clipboard.writeText(postUrl);
-      
-      toast({
-        title: "Link copied!",
-        description: "Post link has been copied to your clipboard.",
-      });
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      toast({
-        title: "Error",
-        description: "Failed to copy link to clipboard.",
-        variant: "destructive"
-      });
-    }
+  const handleShare = (postId: string) => {
+    // Generate the direct link to the post detail view
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    setShareUrl(postUrl);
+    setShowShareModal(true);
   };
 
   // Show followers/following lists
@@ -727,6 +715,14 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
         onClose={() => setShowEditModal(false)}
         currentProfile={currentProfile || user}
         onProfileUpdate={handleProfileUpdate}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        url={shareUrl}
+        title="Share Post"
       />
     </div>
   );

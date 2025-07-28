@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Pause, Heart, MessageCircle, Copy, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Pause, Heart, MessageCircle, Share, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -156,7 +156,7 @@ export const BeatCard = ({ beat, isAiRecommended = false, onSwipe, onLike, onCom
             </Button>
             
             <Button variant="ghost" size="sm" className="text-muted-foreground">
-              <Copy className="w-4 h-4" />
+              <Share className="w-4 h-4" />
             </Button>
           </div>
 
