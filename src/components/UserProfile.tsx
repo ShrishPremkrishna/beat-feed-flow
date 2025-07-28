@@ -80,8 +80,10 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
+      console.log('Current user ID:', currentUser.id);
+
       // Load user's posts
-      const { data: posts } = await supabase
+      const { data: posts, error: postsError } = await supabase
         .from('posts')
         .select(`
           id,
@@ -89,17 +91,15 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
           created_at,
           likes_count,
           comments_count,
-          profiles!posts_user_id_fkey (
-            display_name,
-            username,
-            avatar_url
-          )
+          user_id
         `)
         .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false });
 
+      console.log('Posts query result:', posts, 'Error:', postsError);
+
       // Load user's replies (comments with beats)
-      const { data: replies } = await supabase
+      const { data: replies, error: repliesError } = await supabase
         .from('comments')
         .select(`
           id,
@@ -107,34 +107,22 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
           created_at,
           post_id,
           beat_id,
-          profiles!comments_user_id_fkey (
-            display_name,
-            username,
-            avatar_url
-          ),
-          posts!comments_post_id_fkey (
-            content,
-            profiles!posts_user_id_fkey (
-              display_name,
-              username,
-              avatar_url
-            )
-          ),
-          beats (
-            title,
-            artist,
-            cover_art_url,
-            file_url,
-            bpm,
-            key,
-            mood,
-            price,
-            duration
-          )
+          user_id
         `)
         .eq('user_id', currentUser.id)
         .not('beat_id', 'is', null)
         .order('created_at', { ascending: false });
+
+      console.log('Replies query result:', replies, 'Error:', repliesError);
+
+      // Load current user profile for display
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('display_name, username, avatar_url')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      console.log('User profile:', userProfile);
 
       setUserPosts(posts || []);
       setUserReplies(replies || []);
@@ -341,8 +329,8 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
                   id: postData.id,
                   content: postData.content,
                   author: {
-                    name: postData.profiles?.display_name || postData.profiles?.username || 'Anonymous',
-                    avatar: postData.profiles?.avatar_url || ''
+                    name: currentProfile?.name || 'Anonymous',
+                    avatar: currentProfile?.avatar || ''
                   },
                   timestamp: new Date(postData.created_at).toLocaleDateString(),
                   likes: postData.likes_count || 0,
@@ -371,54 +359,41 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
               <div key={reply.id} className="beat-card space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0">
-                    {reply.profiles?.avatar_url ? (
+                    {currentProfile?.avatar ? (
                       <img 
-                        src={reply.profiles.avatar_url}
-                        alt={reply.profiles?.display_name || 'User'}
+                        src={currentProfile.avatar}
+                        alt={currentProfile?.name || 'User'}
                         className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                         <span className="text-lg font-bold text-muted-foreground">
-                          {(reply.profiles?.display_name || 'U').charAt(0).toUpperCase()}
+                          {(currentProfile?.name || 'U').charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="font-semibold">{reply.profiles?.display_name || reply.profiles?.username || 'Anonymous'}</span>
-                      <span className="text-muted-foreground text-sm">replied to</span>
-                      <span className="font-semibold">{reply.posts?.profiles?.display_name || reply.posts?.profiles?.username || 'User'}</span>
+                      <span className="font-semibold">{currentProfile?.name || 'Anonymous'}</span>
+                      <span className="text-muted-foreground text-sm">replied with a beat</span>
                       <span className="text-muted-foreground text-sm">•</span>
                       <span className="text-muted-foreground text-sm">{new Date(reply.created_at).toLocaleDateString()}</span>
                     </div>
                     {reply.content && (
                       <p className="text-foreground mb-3">{reply.content}</p>
                     )}
-                    {reply.beats && (
-                      <div className="bg-muted/30 rounded-lg p-4 border border-border">
-                        <div className="flex items-center gap-3">
-                          {reply.beats.cover_art_url && (
-                            <img 
-                              src={reply.beats.cover_art_url}
-                              alt={reply.beats.title}
-                              className="w-16 h-16 rounded-lg object-cover"
-                            />
-                          )}
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-foreground">{reply.beats.title}</h4>
-                            <p className="text-muted-foreground text-sm">{reply.beats.artist}</p>
-                            {reply.beats.bpm && reply.beats.key && (
-                              <div className="flex gap-2 mt-1">
-                                <Badge variant="secondary" className="text-xs">{reply.beats.bpm} BPM</Badge>
-                                <Badge variant="secondary" className="text-xs">{reply.beats.key}</Badge>
-                              </div>
-                            )}
-                          </div>
+                    <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-16 rounded-lg bg-primary/20 flex items-center justify-center">
+                          <Music className="w-8 h-8 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-foreground">Beat Reply</h4>
+                          <p className="text-muted-foreground text-sm">Beat ID: {reply.beat_id}</p>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
