@@ -9,32 +9,6 @@ interface FeedProps {
   onPostDetailView?: (postId: string) => void;
 }
 
-const mockPosts = [
-  {
-    id: 'p1',
-    content: 'Looking for a hard trap beat for my new track! Something dark with heavy 808s. Budget around $100. Drop your beats below! 🔥',
-    author: {
-      name: 'MC Flow',
-      avatar: ''
-    },
-    timestamp: '1 hour ago',
-    likes: 23,
-    comments: 12,
-    isLiked: false
-  },
-  {
-    id: 'p2',
-    content: 'Just dropped this new lo-fi beat! Perfect for late night vibes ✨ What do you think?',
-    author: {
-      name: 'Chill Beats',
-      avatar: ''
-    },
-    timestamp: '3 hours ago',
-    likes: 67,
-    comments: 8,
-    isLiked: true
-  }
-];
 
 export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
@@ -102,16 +76,17 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
         };
       }) || [];
 
-      // Use real data if available, otherwise fallback to mock data
-      setPosts(transformedPosts.length > 0 ? transformedPosts : mockPosts);
+      // Set the transformed posts
+      setPosts(transformedPosts);
 
     } catch (error) {
       console.error('Error loading data:', error);
-      // Fallback to mock data if database query fails
-      setPosts(mockPosts);
+      // Show empty feed if database query fails
+      setPosts([]);
       toast({
-        title: "Using sample data",
-        description: "Loading data from database failed, showing sample content.",
+        title: "Error loading posts",
+        description: "Failed to load posts from database.",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -184,22 +159,29 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
 
       {/* Feed Content */}
       <div className="space-y-6">
-        {posts.map((post) => (
-          <div 
-            key={post.id}
-            className={`transition-all duration-300 ${
-              highlightedPostId === post.id ? 'ring-2 ring-primary shadow-lg scale-102' : ''
-            }`}
-          >
-            <UserPost 
-              post={post}
-              onLike={() => handleLike(post.id)}
-              onComment={() => console.log('Comment on post', post.id)}
-              onPostClick={() => onPostDetailView?.(post.id)}
-              onDelete={() => loadPosts()} // Reload posts when one is deleted
-            />
+        {posts.length === 0 && !loading ? (
+          <div className="beat-card text-center py-12">
+            <div className="text-muted-foreground text-lg mb-2">No posts yet</div>
+            <div className="text-muted-foreground text-sm">Be the first to share something!</div>
           </div>
-        ))}
+        ) : (
+          posts.map((post) => (
+            <div 
+              key={post.id}
+              className={`transition-all duration-300 ${
+                highlightedPostId === post.id ? 'ring-2 ring-primary shadow-lg scale-102' : ''
+              }`}
+            >
+              <UserPost 
+                post={post}
+                onLike={() => handleLike(post.id)}
+                onComment={() => console.log('Comment on post', post.id)}
+                onPostClick={() => onPostDetailView?.(post.id)}
+                onDelete={() => loadPosts()} // Reload posts when one is deleted
+              />
+            </div>
+          ))
+        )}
       </div>
 
       {/* Load More */}
