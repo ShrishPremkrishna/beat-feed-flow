@@ -7,6 +7,7 @@ import { UserPost } from './UserPost';
 import { ProfileEditModal } from './ProfileEditModal';
 import { BeatPlayer } from './BeatPlayer';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserProfileProps {
   user?: {
@@ -52,6 +53,7 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
   const [showFollowingList, setShowFollowingList] = useState(false);
   const [followersList, setFollowersList] = useState<any[]>([]);
   const [followingList, setFollowingList] = useState<any[]>([]);
+  const { toast } = useToast();
 
   const defaultUser = {
     name: 'BeatMaker Pro',
@@ -303,6 +305,28 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
 
   const handleProfileUpdate = (updatedProfile: any) => {
     setCurrentProfile(updatedProfile);
+  };
+
+  const handleShare = async (postId: string) => {
+    try {
+      // Generate the direct link to the post detail view
+      const postUrl = `${window.location.origin}/post/${postId}`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(postUrl);
+      
+      toast({
+        title: "Link copied!",
+        description: "Post link has been copied to your clipboard.",
+      });
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast({
+        title: "Error",
+        description: "Failed to copy link to clipboard.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Show followers/following lists
@@ -612,9 +636,7 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
                   onComment={() => {
                     // Handle comment functionality
                   }}
-                  onShare={() => {
-                    // Handle share functionality
-                  }}
+                  onShare={() => handleShare(postData.id)}
                   onPostClick={() => onPostClick?.(postData.id)}
                 />
               </div>
