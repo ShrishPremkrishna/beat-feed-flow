@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 interface NavbarProps {
   onProfileClick?: () => void;
   onNotificationsClick?: () => void;
+  onLogoClick?: () => void;
   currentUser?: {
     name: string;
     avatar: string;
@@ -14,7 +15,7 @@ interface NavbarProps {
   };
 }
 
-export const Navbar = ({ onProfileClick, onNotificationsClick, currentUser }: NavbarProps) => {
+export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, currentUser }: NavbarProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const defaultUser = {
@@ -30,7 +31,7 @@ export const Navbar = ({ onProfileClick, onNotificationsClick, currentUser }: Na
       <div className="max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Enhanced Logo inspired by reference */}
-          <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="flex items-center gap-3 group cursor-pointer" onClick={onLogoClick}>
             {/* Logo Icon - Headphones with Music Note */}
             <div className="relative">
               <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow group-hover:shadow-intense transition-all duration-300 group-hover:scale-110">

@@ -80,6 +80,10 @@ const Index = () => {
     setShowProfile(true);
   };
 
+  const handleBackToFeed = () => {
+    setShowProfile(false);
+  };
+
   // Create navbar user object
   const navbarUser = userProfile ? {
     name: userProfile.display_name || userProfile.username || 'User',
@@ -116,6 +120,7 @@ const Index = () => {
             isVerified: false
           } : undefined}
           isOwnProfile={true}
+          onBackToFeed={handleBackToFeed}
         />
       );
     }
@@ -180,6 +185,7 @@ const Index = () => {
           currentUser={navbarUser}
           onProfileClick={handleProfileClick}
           onNotificationsClick={() => console.log('Notifications clicked')}
+          onLogoClick={handleBackToFeed}
         />
       </div>
       

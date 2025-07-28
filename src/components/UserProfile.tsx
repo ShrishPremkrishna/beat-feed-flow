@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music } from 'lucide-react';
+import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,9 +32,10 @@ interface UserProfileProps {
     isVerified: boolean;
   };
   isOwnProfile?: boolean;
+  onBackToFeed?: () => void;
 }
 
-export const UserProfile = ({ user, isOwnProfile = false }: UserProfileProps) => {
+export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserProfileProps) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(user);
@@ -92,6 +93,18 @@ export const UserProfile = ({ user, isOwnProfile = false }: UserProfileProps) =>
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Back to Feed Button */}
+      {onBackToFeed && (
+        <Button 
+          variant="ghost" 
+          onClick={onBackToFeed}
+          className="mb-4 hover:bg-muted"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Feed
+        </Button>
+      )}
+
       {/* Profile Header */}
       <div className="beat-card">
         <div className="flex flex-col md:flex-row gap-6">
