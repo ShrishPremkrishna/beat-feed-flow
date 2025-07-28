@@ -3,6 +3,7 @@ import { Navbar } from '@/components/Navbar';
 import { Feed } from '@/components/Feed';
 import { UserProfile } from '@/components/UserProfile';
 import { PostDetail } from '@/components/PostDetail';
+import { BeatSwiper } from '@/components/BeatSwiper';
 import { AuthModal } from '@/components/AuthModal';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +21,8 @@ const Index = () => {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [viewingUserProfile, setViewingUserProfile] = useState<any>(null);
+  const [showBeatSwiper, setShowBeatSwiper] = useState(false);
+  const [beatSwiperPostId, setBeatSwiperPostId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -82,9 +85,22 @@ const Index = () => {
 
     initializeAuth();
 
+    // Beat Swiper event listener
+    const handleBeatSwiperOpen = (event: any) => {
+      if (event.detail?.postId) {
+        setBeatSwiperPostId(event.detail.postId);
+        setShowBeatSwiper(true);
+        setShowPostDetail(false);
+        setShowProfile(false);
+      }
+    };
+
+    window.addEventListener('openBeatSwiper', handleBeatSwiperOpen);
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.removeEventListener('openBeatSwiper', handleBeatSwiperOpen);
     };
   }, []);
 
@@ -197,6 +213,11 @@ const Index = () => {
     setSelectedPostId(null);
   };
 
+  const handleBackFromBeatSwiper = () => {
+    setShowBeatSwiper(false);
+    setBeatSwiperPostId(null);
+  };
+
   const handleUserSearch = (query: string) => {
     // This function can be expanded for additional search logic if needed
     console.log('User search:', query);
@@ -222,6 +243,15 @@ const Index = () => {
   } : undefined;
 
   const renderContent = () => {
+    if (showBeatSwiper && beatSwiperPostId) {
+      return (
+        <BeatSwiper 
+          postId={beatSwiperPostId}
+          onBack={handleBackFromBeatSwiper}
+        />
+      );
+    }
+    
     if (showPostDetail && selectedPostId) {
       return (
         <PostDetail 

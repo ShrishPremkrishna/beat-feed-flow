@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
@@ -46,7 +46,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [sortBy, setSortBy] = useState<'likes' | 'recent'>('likes');
+  const [sortBy, setSortBy] = useState<'likes' | 'recent' | 'my_likes'>('likes');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -107,6 +107,8 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
 
       // Check which replies the current user has liked
       let userLikes: string[] = [];
+      let userBeatReactions: { [beatId: string]: string } = {};
+      
       if (currentUser && commentsData?.length) {
         const { data: likesData } = await supabase
           .from('likes')
@@ -115,10 +117,30 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
           .in('comment_id', commentsData.map(c => c.id));
         
         userLikes = likesData?.map(l => l.comment_id) || [];
+
+        // Also load beat reactions if this is the post owner
+        if (currentUser.id === post.user_id) {
+          const beatIds = commentsData
+            .filter(c => c.beats?.id)
+            .map(c => c.beats.id);
+          
+          if (beatIds.length > 0) {
+            const { data: reactionsData } = await supabase
+              .from('beat_reactions')
+              .select('beat_id, reaction')
+              .eq('user_id', currentUser.id)
+              .in('beat_id', beatIds);
+            
+            userBeatReactions = reactionsData?.reduce((acc, r) => {
+              acc[r.beat_id] = r.reaction;
+              return acc;
+            }, {} as { [beatId: string]: string }) || {};
+          }
+        }
       }
 
       // Transform comments with author info and beat data
-      const transformedComments = commentsData.map((comment: any) => {
+      let transformedComments = commentsData.map((comment: any) => {
         const profile = profileMap.get(comment.user_id);
         return {
           ...comment,
@@ -137,9 +159,17 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
           },
           timestamp: new Date(comment.created_at).toLocaleString(),
           likes: comment.likes_count || 0,
-          isLiked: userLikes.includes(comment.id)
+          isLiked: userLikes.includes(comment.id),
+          beatReaction: comment.beats?.id ? userBeatReactions[comment.beats.id] : null
         };
       });
+
+      // Apply "My Likes" filtering if selected
+      if (sortBy === 'my_likes' && currentUser?.id === post.user_id) {
+        transformedComments = transformedComments.filter(comment => 
+          comment.beatReaction === 'like'
+        );
+      }
 
       setReplies(transformedComments);
     } catch (error) {
@@ -401,6 +431,22 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
           >
             <Share className="w-4 h-4" />
           </Button>
+          
+          {/* Review Beats Button (only for post owner) */}
+          {isPostOwner && replies.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                // This will be handled by the parent component
+                window.dispatchEvent(new CustomEvent('openBeatSwiper', { detail: { postId: post.id } }));
+              }}
+              className="flex items-center gap-2 text-primary hover:text-primary/80"
+            >
+              Review Beats
+            </Button>
+          )}
         </div>
       </div>
 
@@ -423,7 +469,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             <span className="text-sm font-medium text-muted-foreground">
               Replies ({replies.length})
             </span>
-            <Select value={sortBy} onValueChange={(value: 'likes' | 'recent') => setSortBy(value)}>
+            <Select value={sortBy} onValueChange={(value: 'likes' | 'recent' | 'my_likes') => setSortBy(value)}>
               <SelectTrigger className="w-[140px] h-8">
                 <SelectValue />
               </SelectTrigger>
@@ -440,6 +486,14 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                     Most Recent
                   </div>
                 </SelectItem>
+                {isPostOwner && (
+                  <SelectItem value="my_likes">
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-3 h-3" />
+                      My Likes
+                    </div>
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -496,7 +550,21 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                   </div>
                    {/* Display beat if it's a beat reply */}
                    {reply.beat ? (
-                     <div className="mt-2 mb-3">
+                     <div className="mt-2 mb-3 relative">
+                       {/* Beat reaction indicator for post owner */}
+                       {isPostOwner && reply.beatReaction && (
+                         <div className="absolute top-2 right-2 z-10">
+                           {reply.beatReaction === 'like' ? (
+                             <div className="bg-green-500 text-white rounded-full p-1">
+                               <Heart className="w-3 h-3 fill-current" />
+                             </div>
+                           ) : (
+                             <div className="bg-red-500 text-white rounded-full p-1">
+                               <X className="w-3 h-3" />
+                             </div>
+                           )}
+                         </div>
+                       )}
                        <BeatPlayer
                          audioUrl={reply.beat.file_url}
                          title={reply.beat.title}

@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      beat_reactions: {
+        Row: {
+          beat_id: string
+          created_at: string
+          id: string
+          reaction: string
+          user_id: string
+        }
+        Insert: {
+          beat_id: string
+          created_at?: string
+          id?: string
+          reaction: string
+          user_id: string
+        }
+        Update: {
+          beat_id?: string
+          created_at?: string
+          id?: string
+          reaction?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       beats: {
         Row: {
           artist: string | null
