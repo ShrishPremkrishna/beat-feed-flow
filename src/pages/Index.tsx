@@ -14,6 +14,7 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
   useEffect(() => {
     // Set up auth state listener
@@ -78,14 +79,21 @@ const Index = () => {
 
   const handleProfileClick = () => {
     setShowProfile(true);
+    setHighlightedPostId(null);
   };
 
   const handleBackToFeed = () => {
     setShowProfile(false);
+    setHighlightedPostId(null);
     // Refresh profile data when going back to feed
     if (user) {
       fetchUserProfile(user.id);
     }
+  };
+
+  const handlePostClick = (postId: string) => {
+    setHighlightedPostId(postId);
+    setShowProfile(false);
   };
 
   // Create navbar user object
@@ -125,10 +133,11 @@ const Index = () => {
           } : undefined}
           isOwnProfile={true}
           onBackToFeed={handleBackToFeed}
+          onPostClick={handlePostClick}
         />
       );
     }
-    return <Feed />;
+    return <Feed highlightedPostId={highlightedPostId} />;
   };
 
   if (!user) {

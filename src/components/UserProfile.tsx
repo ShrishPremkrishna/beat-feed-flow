@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft, MessageCircle, Heart } from 'lucide-react';
+import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft, MessageCircle, Heart, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPost } from './UserPost';
 import { ProfileEditModal } from './ProfileEditModal';
+import { BeatPlayer } from './BeatPlayer';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfileProps {
@@ -34,9 +35,10 @@ interface UserProfileProps {
   };
   isOwnProfile?: boolean;
   onBackToFeed?: () => void;
+  onPostClick?: (postId: string) => void;
 }
 
-export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserProfileProps) => {
+export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostClick }: UserProfileProps) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(user);
@@ -107,7 +109,19 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
           created_at,
           post_id,
           beat_id,
-          user_id
+          user_id,
+          beats (
+            id,
+            title,
+            artist,
+            cover_art_url,
+            file_url,
+            bpm,
+            key,
+            mood,
+            price,
+            duration
+          )
         `)
         .eq('user_id', currentUser.id)
         .not('beat_id', 'is', null)
@@ -323,24 +337,29 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
             </div>
           ) : (
             userPosts.map((postData) => (
-              <UserPost
+              <div 
                 key={postData.id}
-                post={{
-                  id: postData.id,
-                  content: postData.content,
-                  author: {
-                    name: currentProfile?.name || 'Anonymous',
-                    avatar: currentProfile?.avatar || ''
-                  },
-                  timestamp: new Date(postData.created_at).toLocaleDateString(),
-                  likes: postData.likes_count || 0,
-                  comments: postData.comments_count || 0,
-                  isLiked: false
-                }}
-                onLike={() => {}}
-                onComment={() => {}}
-                onShare={() => {}}
-              />
+                className="cursor-pointer hover:bg-muted/50 transition-colors rounded-lg p-1"
+                onClick={() => onPostClick?.(postData.id)}
+              >
+                <UserPost
+                  post={{
+                    id: postData.id,
+                    content: postData.content,
+                    author: {
+                      name: currentProfile?.name || 'Anonymous',
+                      avatar: currentProfile?.avatar || ''
+                    },
+                    timestamp: new Date(postData.created_at).toLocaleDateString(),
+                    likes: postData.likes_count || 0,
+                    comments: postData.comments_count || 0,
+                    isLiked: false
+                  }}
+                  onLike={() => {}}
+                  onComment={() => {}}
+                  onShare={() => {}}
+                />
+              </div>
             ))
           )}
         </TabsContent>
@@ -356,7 +375,11 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
             </div>
           ) : (
             userReplies.map((reply) => (
-              <div key={reply.id} className="beat-card space-y-4">
+              <div 
+                key={reply.id} 
+                className="beat-card space-y-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => onPostClick?.(reply.post_id)}
+              >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0">
                     {currentProfile?.avatar ? (
@@ -383,17 +406,22 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
                     {reply.content && (
                       <p className="text-foreground mb-3">{reply.content}</p>
                     )}
-                    <div className="bg-muted/30 rounded-lg p-4 border border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-16 h-16 rounded-lg bg-primary/20 flex items-center justify-center">
-                          <Music className="w-8 h-8 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-foreground">Beat Reply</h4>
-                          <p className="text-muted-foreground text-sm">Beat ID: {reply.beat_id}</p>
-                        </div>
+                    {reply.beats && (
+                      <div 
+                        className="bg-muted/30 rounded-lg border border-border overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <BeatPlayer
+                          audioUrl={reply.beats.file_url || ''}
+                          title={reply.beats.title || 'Untitled Beat'}
+                          artist={reply.beats.artist || currentProfile?.name || 'Anonymous'}
+                          bpm={reply.beats.bpm || undefined}
+                          key={reply.beats.key || undefined}
+                          mood={reply.beats.mood || undefined}
+                          className="p-4"
+                        />
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>

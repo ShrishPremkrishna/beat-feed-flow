@@ -4,6 +4,10 @@ import { UserPost } from './UserPost';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface FeedProps {
+  highlightedPostId?: string | null;
+}
+
 const mockPosts = [
   {
     id: 'p1',
@@ -31,7 +35,7 @@ const mockPosts = [
   }
 ];
 
-export const Feed = () => {
+export const Feed = ({ highlightedPostId }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -118,12 +122,18 @@ export const Feed = () => {
       {/* Feed Content */}
       <div className="space-y-6">
         {posts.map((post) => (
-          <UserPost 
+          <div 
             key={post.id}
-            post={post}
-            onLike={() => handleLike(post.id, 'post')}
-            onComment={() => console.log('Comment on post', post.id)}
-          />
+            className={`transition-all duration-300 ${
+              highlightedPostId === post.id ? 'ring-2 ring-primary shadow-lg scale-102' : ''
+            }`}
+          >
+            <UserPost 
+              post={post}
+              onLike={() => handleLike(post.id, 'post')}
+              onComment={() => console.log('Comment on post', post.id)}
+            />
+          </div>
         ))}
       </div>
 
