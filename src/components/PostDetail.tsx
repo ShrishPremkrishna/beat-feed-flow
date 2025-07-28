@@ -235,19 +235,23 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
-        await supabase
+        const { error } = await supabase
           .from('likes')
           .delete()
           .eq('user_id', currentUser.id)
           .eq('comment_id', replyId);
+          
+        if (error) throw error;
       } else {
         // Like the reply
-        await supabase
+        const { error } = await supabase
           .from('likes')
           .insert({
             user_id: currentUser.id,
             comment_id: replyId
           });
+          
+        if (error) throw error;
       }
       
       // Reload post detail to get updated like counts and states from database
