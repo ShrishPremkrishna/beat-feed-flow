@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft, MessageCircle, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BeatCard } from './BeatCard';
+import { UserPost } from './UserPost';
 import { ProfileEditModal } from './ProfileEditModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfileProps {
   user?: {
@@ -39,6 +40,9 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
   const [isFollowing, setIsFollowing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(user);
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [userReplies, setUserReplies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const defaultUser = {
     name: 'BeatMaker Pro',
@@ -67,29 +71,83 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
 
   const profileUser = currentProfile || user || defaultUser;
 
+  useEffect(() => {
+    loadUserActivity();
+  }, []);
+
+  const loadUserActivity = async () => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+
+      // Load user's posts
+      const { data: posts } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          content,
+          created_at,
+          likes_count,
+          comments_count,
+          profiles!posts_user_id_fkey (
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      // Load user's replies (comments with beats)
+      const { data: replies } = await supabase
+        .from('comments')
+        .select(`
+          id,
+          content,
+          created_at,
+          post_id,
+          beat_id,
+          profiles!comments_user_id_fkey (
+            display_name,
+            username,
+            avatar_url
+          ),
+          posts!comments_post_id_fkey (
+            content,
+            profiles!posts_user_id_fkey (
+              display_name,
+              username,
+              avatar_url
+            )
+          ),
+          beats (
+            title,
+            artist,
+            cover_art_url,
+            file_url,
+            bpm,
+            key,
+            mood,
+            price,
+            duration
+          )
+        `)
+        .eq('user_id', currentUser.id)
+        .not('beat_id', 'is', null)
+        .order('created_at', { ascending: false });
+
+      setUserPosts(posts || []);
+      setUserReplies(replies || []);
+    } catch (error) {
+      console.error('Error loading user activity:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleProfileUpdate = (updatedProfile: any) => {
     setCurrentProfile(updatedProfile);
   };
-
-  // Mock user beats
-  const userBeats = [
-    {
-      id: '1',
-      title: 'Dark Trap Vibes',
-      artist: profileUser.name,
-      avatar: profileUser.avatar,
-      coverArt: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop',
-      bpm: 140,
-      key: 'E Minor',
-      mood: ['Dark', 'Trap', 'Energetic'],
-      description: 'Perfect for rap vocals, dark atmosphere with heavy 808s',
-      price: 75,
-      likes: 234,
-      comments: 45,
-      duration: '3:24',
-      isLiked: false
-    }
-  ];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -260,35 +318,112 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed }: UserPr
       </div>
 
       {/* Content Tabs */}
-      <Tabs defaultValue="beats" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 bg-muted">
-          <TabsTrigger value="beats">Beats</TabsTrigger>
-          <TabsTrigger value="likes">Likes</TabsTrigger>
-          <TabsTrigger value="playlists">Playlists</TabsTrigger>
+      <Tabs defaultValue="posts" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 bg-muted">
+          <TabsTrigger value="posts">My Posts</TabsTrigger>
+          <TabsTrigger value="replies">My Replies</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="beats" className="space-y-6">
-          {userBeats.map((beat) => (
-            <BeatCard
-              key={beat.id}
-              beat={beat}
-              onSwipe={() => {}}
-              onLike={() => {}}
-              onComment={() => {}}
-            />
-          ))}
+        <TabsContent value="posts" className="space-y-6">
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Loading posts...
+            </div>
+          ) : userPosts.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No posts yet
+            </div>
+          ) : (
+            userPosts.map((postData) => (
+              <UserPost
+                key={postData.id}
+                post={{
+                  id: postData.id,
+                  content: postData.content,
+                  author: {
+                    name: postData.profiles?.display_name || postData.profiles?.username || 'Anonymous',
+                    avatar: postData.profiles?.avatar_url || ''
+                  },
+                  timestamp: new Date(postData.created_at).toLocaleDateString(),
+                  likes: postData.likes_count || 0,
+                  comments: postData.comments_count || 0,
+                  isLiked: false
+                }}
+                onLike={() => {}}
+                onComment={() => {}}
+                onShare={() => {}}
+              />
+            ))
+          )}
         </TabsContent>
 
-        <TabsContent value="likes" className="space-y-6">
-          <div className="text-center py-12 text-muted-foreground">
-            Liked beats will appear here
-          </div>
-        </TabsContent>
-
-        <TabsContent value="playlists" className="space-y-6">
-          <div className="text-center py-12 text-muted-foreground">
-            User playlists will appear here
-          </div>
+        <TabsContent value="replies" className="space-y-6">
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Loading replies...
+            </div>
+          ) : userReplies.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No replies yet
+            </div>
+          ) : (
+            userReplies.map((reply) => (
+              <div key={reply.id} className="beat-card space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    {reply.profiles?.avatar_url ? (
+                      <img 
+                        src={reply.profiles.avatar_url}
+                        alt={reply.profiles?.display_name || 'User'}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                        <span className="text-lg font-bold text-muted-foreground">
+                          {(reply.profiles?.display_name || 'U').charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold">{reply.profiles?.display_name || reply.profiles?.username || 'Anonymous'}</span>
+                      <span className="text-muted-foreground text-sm">replied to</span>
+                      <span className="font-semibold">{reply.posts?.profiles?.display_name || reply.posts?.profiles?.username || 'User'}</span>
+                      <span className="text-muted-foreground text-sm">•</span>
+                      <span className="text-muted-foreground text-sm">{new Date(reply.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {reply.content && (
+                      <p className="text-foreground mb-3">{reply.content}</p>
+                    )}
+                    {reply.beats && (
+                      <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                        <div className="flex items-center gap-3">
+                          {reply.beats.cover_art_url && (
+                            <img 
+                              src={reply.beats.cover_art_url}
+                              alt={reply.beats.title}
+                              className="w-16 h-16 rounded-lg object-cover"
+                            />
+                          )}
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground">{reply.beats.title}</h4>
+                            <p className="text-muted-foreground text-sm">{reply.beats.artist}</p>
+                            {reply.beats.bpm && reply.beats.key && (
+                              <div className="flex gap-2 mt-1">
+                                <Badge variant="secondary" className="text-xs">{reply.beats.bpm} BPM</Badge>
+                                <Badge variant="secondary" className="text-xs">{reply.beats.key}</Badge>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </TabsContent>
       </Tabs>
 
