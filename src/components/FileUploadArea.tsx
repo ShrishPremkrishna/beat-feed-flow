@@ -1,6 +1,8 @@
 import { useState, useRef, DragEvent } from 'react';
 import { Upload, Music, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { validateAudioFile, rateLimiter } from '@/lib/security';
+import { useToast } from '@/hooks/use-toast';
 
 interface FileUploadAreaProps {
   onFileSelect: (file: File) => void;
@@ -25,6 +27,7 @@ export const FileUploadArea = ({
 }: FileUploadAreaProps) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -47,26 +50,47 @@ export const FileUploadArea = ({
   };
 
   const handleFileSelect = (file: File) => {
-    // Validate file type
-    const fileType = file.type;
-    const acceptedTypes = accept.split(',').map(type => type.trim());
-    
-    const isValidType = acceptedTypes.some(acceptedType => {
-      if (acceptedType === 'audio/*') {
-        return fileType.startsWith('audio/');
-      }
-      return fileType === acceptedType;
-    });
-
-    if (!isValidType) {
-      alert('Please select a valid audio file.');
+    // Rate limiting for file uploads
+    if (!rateLimiter.canAttempt('file_upload', 10, 60 * 60 * 1000)) { // 10 uploads per hour
+      const remainingTime = Math.ceil(rateLimiter.getRemainingTime('file_upload', 60 * 60 * 1000) / 1000 / 60);
+      toast({
+        title: "Upload limit reached",
+        description: `Please wait ${remainingTime} minutes before uploading another file.`,
+        variant: "destructive",
+      });
       return;
     }
 
-    // Validate file size
-    const fileSizeInMB = file.size / (1024 * 1024);
-    if (fileSizeInMB > maxSize) {
-      alert(`File size must be less than ${maxSize}MB.`);
+    // Enhanced file validation using security utilities
+    const validation = validateAudioFile(file, maxSize);
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid file",
+        description: validation.errors.join(' '),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Additional security check for file name
+    if (file.name.length > 255) {
+      toast({
+        title: "Invalid file name",
+        description: "File name is too long. Please rename the file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for potentially dangerous file extensions hidden in the name
+    const suspiciousExtensions = ['.exe', '.bat', '.cmd', '.scr', '.com', '.pif', '.vbs', '.js', '.jar', '.zip', '.rar'];
+    const fileName = file.name.toLowerCase();
+    if (suspiciousExtensions.some(ext => fileName.includes(ext))) {
+      toast({
+        title: "Suspicious file",
+        description: "File appears to contain potentially dangerous content.",
+        variant: "destructive",
+      });
       return;
     }
 

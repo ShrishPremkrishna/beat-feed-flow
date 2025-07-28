@@ -8,6 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Camera, Instagram, Twitter, Music, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validateURL, validateSocialHandle, sanitizeText, validateImageFile, rateLimiter } from '@/lib/security';
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface ProfileEditModalProps {
 export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpdate }: ProfileEditModalProps) => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
@@ -51,6 +53,17 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
+      // Rate limiting for file uploads
+      if (!rateLimiter.canAttempt('avatar_upload', 5, 60 * 60 * 1000)) { // 5 uploads per hour
+        const remainingTime = Math.ceil(rateLimiter.getRemainingTime('avatar_upload', 60 * 60 * 1000) / 1000 / 60);
+        toast({
+          title: "Upload limit reached",
+          description: `Please wait ${remainingTime} minutes before uploading another avatar.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       setUploading(true);
       console.log('Starting avatar upload...');
       
@@ -62,25 +75,13 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
 
       console.log('File selected:', file.name, file.type, file.size);
 
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-      if (!allowedTypes.includes(file.type)) {
-        console.log('Invalid file type:', file.type);
+      // Enhanced file validation using security utilities
+      const validation = await validateImageFile(file, 5);
+      if (!validation.isValid) {
+        console.log('File validation failed:', validation.errors);
         toast({
-          title: "Invalid file type",
-          description: "Please upload a JPEG, PNG, WebP, or GIF image.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
-        console.log('File too large:', file.size);
-        toast({
-          title: "File too large",
-          description: "Please upload an image smaller than 5MB.",
+          title: "Invalid file",
+          description: validation.errors.join(' '),
           variant: "destructive",
         });
         return;
@@ -160,8 +161,55 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
     }
   };
 
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    // Validate URLs
+    if (formData.website && !validateURL(formData.website)) {
+      errors.website = 'Please enter a valid website URL';
+    }
+
+    // Validate social handles
+    if (formData.instagram && !validateSocialHandle(formData.instagram, 'instagram')) {
+      errors.instagram = 'Invalid Instagram handle (1-30 characters, letters, numbers, underscores, periods only)';
+    }
+
+    if (formData.twitter && !validateSocialHandle(formData.twitter, 'twitter')) {
+      errors.twitter = 'Invalid Twitter handle (1-30 characters, letters, numbers, underscores, periods only)';
+    }
+
+    if (formData.beatstars && !validateSocialHandle(formData.beatstars, 'beatstars')) {
+      errors.beatstars = 'Invalid BeatStars profile name';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form before submission
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Rate limiting for profile updates
+    if (!rateLimiter.canAttempt('profile_update', 10, 60 * 60 * 1000)) { // 10 updates per hour
+      const remainingTime = Math.ceil(rateLimiter.getRemainingTime('profile_update', 60 * 60 * 1000) / 1000 / 60);
+      toast({
+        title: "Update limit reached",
+        description: `Please wait ${remainingTime} minutes before updating your profile again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -170,15 +218,23 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
 
       console.log('Updating profile with data:', formData);
 
+      // Sanitize text inputs
+      const sanitizedData = {
+        display_name: sanitizeText(formData.display_name),
+        username: sanitizeText(formData.username).toLowerCase().replace(/\s+/g, '_'),
+        bio: sanitizeText(formData.bio),
+        location: sanitizeText(formData.location),
+        website: formData.website.trim(),
+        instagram: formData.instagram.replace(/^@/, '').trim(),
+        twitter: formData.twitter.replace(/^@/, '').trim(),
+        beatstars: formData.beatstars.trim(),
+        avatar_url: formData.avatar_url,
+      };
+
       const { error, data } = await supabase
         .from('profiles')
         .update({
-          display_name: formData.display_name,
-          username: formData.username,
-          bio: formData.bio,
-          location: formData.location,
-          website: formData.website,
-          avatar_url: formData.avatar_url,
+          ...sanitizedData,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
@@ -254,23 +310,25 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="display_name">Display Name</Label>
-              <Input
-                id="display_name"
-                value={formData.display_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                placeholder="Your display name"
-                required
-              />
+                <Input
+                  id="display_name"
+                  value={formData.display_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, display_name: sanitizeText(e.target.value) }))}
+                  placeholder="Your display name"
+                  maxLength={50}
+                  required
+                />
             </div>
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={formData.username}
-                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                placeholder="@username"
-                required
-              />
+                <Input
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => setFormData(prev => ({ ...prev, username: sanitizeText(e.target.value) }))}
+                  placeholder="@username"
+                  maxLength={30}
+                  required
+                />
             </div>
           </div>
 
@@ -279,8 +337,9 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
             <Textarea
               id="bio"
               value={formData.bio}
-              onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, bio: sanitizeText(e.target.value) }))}
               placeholder="Tell us about yourself..."
+              maxLength={500}
               className="min-h-[100px]"
             />
           </div>
@@ -288,21 +347,33 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                placeholder="City, Country"
-              />
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) => setFormData(prev => ({ ...prev, location: sanitizeText(e.target.value) }))}
+                  placeholder="City, Country"
+                  maxLength={100}
+                />
             </div>
             <div className="space-y-2">
               <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                value={formData.website}
-                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                placeholder="yoursite.com"
-              />
+                <Input
+                  id="website"
+                  value={formData.website}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, website: value }));
+                    // Clear validation error on change
+                    if (validationErrors.website) {
+                      setValidationErrors(prev => ({ ...prev, website: '' }));
+                    }
+                  }}
+                  placeholder="yoursite.com"
+                  className={validationErrors.website ? 'border-destructive' : ''}
+                />
+                {validationErrors.website && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.website}</p>
+                )}
             </div>
           </div>
 
@@ -315,27 +386,60 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
                 <Instagram className="w-5 h-5 text-pink-500" />
                 <Input
                   value={formData.instagram}
-                  onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, instagram: value }));
+                    // Clear validation error on change
+                    if (validationErrors.instagram) {
+                      setValidationErrors(prev => ({ ...prev, instagram: '' }));
+                    }
+                  }}
                   placeholder="Instagram handle"
+                  className={validationErrors.instagram ? 'border-destructive' : ''}
                 />
+                {validationErrors.instagram && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.instagram}</p>
+                )}
               </div>
               
               <div className="flex items-center space-x-3">
                 <Twitter className="w-5 h-5 text-blue-400" />
                 <Input
                   value={formData.twitter}
-                  onChange={(e) => setFormData(prev => ({ ...prev, twitter: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, twitter: value }));
+                    // Clear validation error on change
+                    if (validationErrors.twitter) {
+                      setValidationErrors(prev => ({ ...prev, twitter: '' }));
+                    }
+                  }}
                   placeholder="Twitter handle"
+                  className={validationErrors.twitter ? 'border-destructive' : ''}
                 />
+                {validationErrors.twitter && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.twitter}</p>
+                )}
               </div>
               
               <div className="flex items-center space-x-3">
                 <Music className="w-5 h-5 text-orange-500" />
                 <Input
                   value={formData.beatstars}
-                  onChange={(e) => setFormData(prev => ({ ...prev, beatstars: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, beatstars: value }));
+                    // Clear validation error on change
+                    if (validationErrors.beatstars) {
+                      setValidationErrors(prev => ({ ...prev, beatstars: '' }));
+                    }
+                  }}
                   placeholder="BeatStars profile"
+                  className={validationErrors.beatstars ? 'border-destructive' : ''}
                 />
+                {validationErrors.beatstars && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.beatstars}</p>
+                )}
               </div>
             </div>
           </div>

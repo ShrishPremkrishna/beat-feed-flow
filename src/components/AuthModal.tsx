@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Music } from 'lucide-react';
+import { Eye, EyeOff, Music, CheckCircle, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validatePassword, rateLimiter, sanitizeText } from '@/lib/security';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -25,14 +26,32 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
     password: '', 
     confirmPassword: '' 
   });
+  const [passwordValidation, setPasswordValidation] = useState(validatePassword(''));
   const { toast } = useToast();
 
+  // Handle password validation in real-time
+  const handlePasswordChange = (password: string) => {
+    setSignupForm(prev => ({ ...prev, password }));
+    setPasswordValidation(validatePassword(password));
+  };
+
   const handleLogin = async () => {
+    // Rate limiting for login attempts
+    if (!rateLimiter.canAttempt('login', 5, 15 * 60 * 1000)) { // 5 attempts per 15 minutes
+      const remainingTime = Math.ceil(rateLimiter.getRemainingTime('login', 15 * 60 * 1000) / 1000 / 60);
+      toast({
+        title: "Too many login attempts",
+        description: `Please wait ${remainingTime} minutes before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       console.log('Attempting login...');
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginForm.email,
+        email: loginForm.email.trim(),
         password: loginForm.password,
       });
 
@@ -71,16 +90,48 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
   };
 
   const handleSignup = async () => {
+    // Validate password strength
+    if (!passwordValidation.isValid) {
+      toast({
+        title: "Password requirements not met",
+        description: "Please ensure your password meets all security requirements.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate password confirmation
+    if (signupForm.password !== signupForm.confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please ensure both password fields match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Rate limiting for signup attempts
+    if (!rateLimiter.canAttempt('signup', 3, 60 * 60 * 1000)) { // 3 attempts per hour
+      const remainingTime = Math.ceil(rateLimiter.getRemainingTime('signup', 60 * 60 * 1000) / 1000 / 60);
+      toast({
+        title: "Too many signup attempts",
+        description: `Please wait ${remainingTime} minutes before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const sanitizedName = sanitizeText(signupForm.name);
       const { data, error } = await supabase.auth.signUp({
-        email: signupForm.email,
+        email: signupForm.email.trim(),
         password: signupForm.password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            display_name: signupForm.name,
-            username: signupForm.name.toLowerCase().replace(/\s+/g, '_'),
+            display_name: sanitizedName,
+            username: sanitizedName.toLowerCase().replace(/\s+/g, '_'),
           }
         }
       });
@@ -195,13 +246,14 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
 
           <TabsContent value="signup" className="space-y-4">
             <div className="space-y-4">
-              <div>
+                <div>
                 <Label htmlFor="signup-name">Artist/Producer Name</Label>
                 <Input
                   id="signup-name"
                   value={signupForm.name}
-                  onChange={(e) => setSignupForm(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setSignupForm(prev => ({ ...prev, name: sanitizeText(e.target.value) }))}
                   placeholder="Your stage name"
+                  maxLength={50}
                 />
               </div>
 
@@ -223,8 +275,15 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
                     id="signup-password"
                     type={showPassword ? 'text' : 'password'}
                     value={signupForm.password}
-                    onChange={(e) => setSignupForm(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={(e) => handlePasswordChange(e.target.value)}
                     placeholder="Create a strong password"
+                    className={`pr-10 ${
+                      signupForm.password && !passwordValidation.isValid 
+                        ? 'border-destructive' 
+                        : signupForm.password && passwordValidation.isValid 
+                        ? 'border-green-500' 
+                        : ''
+                    }`}
                   />
                   <Button
                     type="button"
@@ -236,6 +295,45 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
+                
+                {/* Password Strength Indicator */}
+                {signupForm.password && (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`h-2 flex-1 rounded-full ${
+                        passwordValidation.strength === 'weak' ? 'bg-red-200' :
+                        passwordValidation.strength === 'medium' ? 'bg-yellow-200' : 'bg-green-200'
+                      }`}>
+                        <div className={`h-full rounded-full transition-all ${
+                          passwordValidation.strength === 'weak' ? 'w-1/3 bg-red-500' :
+                          passwordValidation.strength === 'medium' ? 'w-2/3 bg-yellow-500' : 'w-full bg-green-500'
+                        }`} />
+                      </div>
+                      <span className={`text-xs font-medium ${
+                        passwordValidation.strength === 'weak' ? 'text-red-600' :
+                        passwordValidation.strength === 'medium' ? 'text-yellow-600' : 'text-green-600'
+                      }`}>
+                        {passwordValidation.strength}
+                      </span>
+                    </div>
+                    
+                    {/* Password Requirements Checklist */}
+                    <div className="space-y-1">
+                      {passwordValidation.errors.map((error, index) => (
+                        <div key={index} className="flex items-center gap-2 text-xs">
+                          <XCircle className="w-3 h-3 text-red-500" />
+                          <span className="text-red-600">{error}</span>
+                        </div>
+                      ))}
+                      {passwordValidation.isValid && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <CheckCircle className="w-3 h-3 text-green-500" />
+                          <span className="text-green-600">Password meets all requirements</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -252,7 +350,14 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
               <Button 
                 onClick={handleSignup} 
                 className="w-full btn-gradient"
-                disabled={isLoading || !signupForm.name || !signupForm.email || !signupForm.password || signupForm.password !== signupForm.confirmPassword}
+                disabled={
+                  isLoading || 
+                  !signupForm.name || 
+                  !signupForm.email || 
+                  !signupForm.password || 
+                  !passwordValidation.isValid || 
+                  signupForm.password !== signupForm.confirmPassword
+                }
               >
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
