@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface PostDetailProps {
   postId: string;
@@ -16,11 +22,18 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReplyComposer, setShowReplyComposer] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadPostDetail();
+    getCurrentUser();
   }, [postId]);
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUser(user);
+  };
 
   const loadPostDetail = async () => {
     try {
@@ -143,6 +156,35 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
     loadPostDetail();
   };
 
+  const handleDeleteReply = async (replyId: string, replyUserId: string) => {
+    if (!currentUser || currentUser.id !== replyUserId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', replyId)
+        .eq('user_id', currentUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Reply deleted successfully'
+      });
+
+      // Reload post details to refresh replies
+      loadPostDetail();
+    } catch (error) {
+      console.error('Error deleting reply:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete reply',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const handleLike = async () => {
     // TODO: Implement like functionality
     toast({
@@ -224,9 +266,27 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
                 <span className="font-semibold text-foreground">{post.author.name}</span>
                 <span className="text-muted-foreground text-sm">{post.timestamp}</span>
               </div>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
+              {currentUser && currentUser.id === post.user_id && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        // Handle post deletion - navigate back to feed
+                        onBack();
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Post
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
             <p className="text-foreground leading-relaxed mb-4">{post.content}</p>
             
@@ -303,9 +363,29 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
                   )}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold text-sm">{reply.author.name}</span>
-                    <span className="text-muted-foreground text-xs">{reply.timestamp}</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{reply.author.name}</span>
+                      <span className="text-muted-foreground text-xs">{reply.timestamp}</span>
+                    </div>
+                    {currentUser && currentUser.id === reply.user_id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <MoreHorizontal className="w-3 h-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteReply(reply.id, reply.user_id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-3 h-3 mr-2" />
+                            Delete Reply
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                   {reply.content && (
                     <p className="text-foreground text-sm mb-3">{reply.content}</p>

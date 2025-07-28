@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserPostProps {
   post: {
     id: string;
     content: string;
+    user_id?: string;
     author: {
       name: string;
       avatar: string;
@@ -22,16 +30,25 @@ interface UserPostProps {
   onComment?: () => void;
   onShare?: () => void;
   onPostClick?: () => void;
+  onDelete?: () => void;
 }
 
-export const UserPost = ({ post, onLike, onComment, onShare, onPostClick }: UserPostProps) => {
+export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDelete }: UserPostProps) => {
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadComments();
+    getCurrentUser();
   }, [post.id]);
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUser(user);
+  };
 
   const loadComments = async () => {
     try {
@@ -111,6 +128,65 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick }: User
     setShowReplyComposer(false);
   };
 
+  const handleDeletePost = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', post.id)
+        .eq('user_id', currentUser.id); // Ensure user can only delete their own posts
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Post deleted successfully'
+      });
+
+      onDelete?.();
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete post',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteReply = async (replyId: string, replyUserId: string) => {
+    if (!currentUser || currentUser.id !== replyUserId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', replyId)
+        .eq('user_id', currentUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Reply deleted successfully'
+      });
+
+      // Reload comments
+      await loadComments();
+    } catch (error) {
+      console.error('Error deleting reply:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete reply',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const isPostOwner = currentUser && (currentUser.id === post.user_id);
+
   return (
     <div 
       className="post-card space-y-4 animate-fade-in cursor-pointer hover:bg-muted/50 transition-colors"
@@ -140,9 +216,32 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick }: User
             <p className="text-sm text-muted-foreground">{post.timestamp}</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="hover:bg-secondary/50">
-          <MoreHorizontal className="w-4 h-4" />
-        </Button>
+        {isPostOwner && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={(e) => e.stopPropagation()}
+                className="h-8 w-8 p-0 hover:bg-secondary/50"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeletePost();
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Post
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Post Content */}
@@ -214,46 +313,78 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick }: User
       {/* Replies */}
       {replies.length > 0 && (
         <div className="space-y-4 border-t border-border pt-4">
-          {replies.map((reply, index) => (
-            <div key={index} className="flex gap-3">
-              {reply.author?.avatar ? (
-                <img 
-                  src={reply.author.avatar} 
-                  alt={reply.author?.name || 'User'}
-                  className="w-8 h-8 rounded-full object-cover border border-primary/20"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-muted border border-primary/20 flex items-center justify-center">
-                  <span className="text-sm font-bold text-muted-foreground">
-                    {(reply.author?.name || 'U').charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
-              <div className="flex-1 bg-muted rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm">{reply.author?.name || 'Anonymous User'}</span>
-                  <span className="text-xs text-muted-foreground">just now</span>
-                </div>
-                {/* Display beat if it's a beat reply */}
-                {reply.beat ? (
-                  <div className="mt-2">
-                    <BeatPlayer
-                      audioUrl={reply.beat.file_url}
-                      title={reply.beat.title}
-                      artist={reply.beat.artist}
-                      bpm={reply.beat.bpm || undefined}
-                      key={reply.beat.key || undefined}
-                      mood={reply.beat.mood || undefined}
-                      className="max-w-md"
-                    />
-                  </div>
+          {replies.map((reply, index) => {
+            const isReplyOwner = currentUser && currentUser.id === reply.user_id;
+            
+            return (
+              <div key={reply.id || index} className="flex gap-3">
+                {reply.author?.avatar ? (
+                  <img 
+                    src={reply.author.avatar} 
+                    alt={reply.author?.name || 'User'}
+                    className="w-8 h-8 rounded-full object-cover border border-primary/20"
+                  />
                 ) : (
-                  /* Display text content for old text replies */
-                  <p className="text-sm">{reply.content}</p>
+                  <div className="w-8 h-8 rounded-full bg-muted border border-primary/20 flex items-center justify-center">
+                    <span className="text-sm font-bold text-muted-foreground">
+                      {(reply.author?.name || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                 )}
+                <div className="flex-1 bg-muted rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{reply.author?.name || 'Anonymous User'}</span>
+                      <span className="text-xs text-muted-foreground">{reply.timestamp}</span>
+                    </div>
+                    {isReplyOwner && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-6 w-6 p-0"
+                          >
+                            <MoreHorizontal className="w-3 h-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteReply(reply.id, reply.user_id);
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-3 h-3 mr-2" />
+                            Delete Reply
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                  {/* Display beat if it's a beat reply */}
+                  {reply.beat ? (
+                    <div className="mt-2">
+                      <BeatPlayer
+                        audioUrl={reply.beat.file_url}
+                        title={reply.beat.title}
+                        artist={reply.beat.artist}
+                        bpm={reply.beat.bpm || undefined}
+                        key={reply.beat.key || undefined}
+                        mood={reply.beat.mood || undefined}
+                        className="max-w-md"
+                      />
+                    </div>
+                  ) : (
+                    /* Display text content for old text replies */
+                    reply.content && <p className="text-sm">{reply.content}</p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -134,6 +134,7 @@ export const Feed = ({ highlightedPostId, onPostDetailView }: FeedProps) => {
               onLike={() => handleLike(post.id, 'post')}
               onComment={() => console.log('Comment on post', post.id)}
               onPostClick={() => onPostDetailView?.(post.id)}
+              onDelete={() => loadPosts()} // Reload posts when one is deleted
             />
           </div>
         ))}
