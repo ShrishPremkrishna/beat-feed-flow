@@ -4,12 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NavbarProps {
   onProfileClick?: () => void;
   onNotificationsClick?: () => void;
   onLogoClick?: () => void;
   onLogout?: () => void;
+  onUserSearch?: (query: string) => void;
+  onUserSelect?: (userId: string) => void;
   currentUser?: {
     name: string;
     avatar: string;
@@ -17,8 +20,10 @@ interface NavbarProps {
   };
 }
 
-export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, onLogout, currentUser }: NavbarProps) => {
+export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, onLogout, onUserSearch, onUserSelect, currentUser }: NavbarProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   const defaultUser = {
     name: 'Current User',
@@ -27,6 +32,39 @@ export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, onLo
   };
 
   const user = currentUser || defaultUser;
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    onUserSearch?.(query);
+    
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username, avatar_url')
+        .or(`display_name.ilike.%${query}%,username.ilike.%${query}%`)
+        .limit(5);
+
+      if (error) throw error;
+
+      setSearchResults(profiles || []);
+      setShowSearchResults(true);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchResults([]);
+    }
+  };
+
+  const handleUserSelect = (userId: string) => {
+    setShowSearchResults(false);
+    setSearchQuery('');
+    onUserSelect?.(userId);
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
@@ -58,17 +96,50 @@ export const Navbar = ({ onProfileClick, onNotificationsClick, onLogoClick, onLo
           </div>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-md mx-8">
+          <div className="flex-1 max-w-md mx-8 relative">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
                 type="text"
-                placeholder="Search beats, artists, or genres..."
+                placeholder="Search artists..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
+                onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
+                onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
                 className="pl-10 bg-muted border-muted-foreground/20 focus:border-primary"
               />
             </div>
+            
+            {/* Search Results Dropdown */}
+            {showSearchResults && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                {searchResults.map((profile) => (
+                  <div
+                    key={profile.user_id}
+                    onClick={() => handleUserSelect(profile.user_id)}
+                    className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
+                  >
+                    {profile.avatar_url ? (
+                      <img 
+                        src={profile.avatar_url} 
+                        alt={profile.display_name || profile.username}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                        <span className="text-sm font-bold">
+                          {(profile.display_name || profile.username || 'U').charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <div className="font-medium">{profile.display_name || 'Anonymous'}</div>
+                      <div className="text-sm text-muted-foreground">@{profile.username}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* User Profile */}

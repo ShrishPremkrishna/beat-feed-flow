@@ -36,9 +36,10 @@ interface UserProfileProps {
   isOwnProfile?: boolean;
   onBackToFeed?: () => void;
   onPostClick?: (postId: string) => void;
+  userId?: string;
 }
 
-export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostClick }: UserProfileProps) => {
+export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostClick, userId }: UserProfileProps) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(user);
@@ -74,15 +75,19 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
   const profileUser = currentProfile || user || defaultUser;
 
   useEffect(() => {
-    loadUserActivity();
-  }, []);
+    if (userId) {
+      loadUserActivity();
+    }
+  }, [userId]);
 
   const loadUserActivity = async () => {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
-      console.log('Current user ID:', currentUser.id);
+      // Use the provided userId or fall back to current user
+      const targetUserId = userId || currentUser.id;
+      console.log('Loading activity for user ID:', targetUserId);
 
       // Load user's posts
       const { data: posts, error: postsError } = await supabase
@@ -95,7 +100,7 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
           comments_count,
           user_id
         `)
-        .eq('user_id', currentUser.id)
+        .eq('user_id', targetUserId)
         .order('created_at', { ascending: false });
 
       console.log('Posts query result:', posts, 'Error:', postsError);
@@ -124,7 +129,7 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
             duration
           )
         `)
-        .eq('user_id', currentUser.id)
+        .eq('user_id', targetUserId)
         .not('beat_id', 'is', null)
         .order('created_at', { ascending: false });
 
@@ -142,11 +147,11 @@ export const UserProfile = ({ user, isOwnProfile = false, onBackToFeed, onPostCl
         userLikes = likesData?.map(l => l.comment_id) || [];
       }
 
-      // Load current user profile for display
+      // Load user profile for display (the one being viewed)
       const { data: userProfile } = await supabase
         .from('profiles')
         .select('display_name, username, avatar_url')
-        .eq('user_id', currentUser.id)
+        .eq('user_id', targetUserId)
         .single();
 
       console.log('User profile:', userProfile);

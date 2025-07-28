@@ -282,15 +282,21 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       {/* Post Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div 
+            className="relative cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              // TODO: Add user profile click handler
+            }}
+          >
             {post.author?.avatar ? (
               <img 
                 src={post.author.avatar} 
                 alt={post.author?.name || 'User'}
-                className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-card"
+                className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-card hover:border-primary/50 transition-colors"
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-card flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-card hover:border-primary/50 transition-colors flex items-center justify-center">
                 <span className="text-lg font-bold text-muted-foreground">
                   {(post.author?.name || 'U').charAt(0).toUpperCase()}
                 </span>
@@ -299,7 +305,15 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-accent rounded-full border-2 border-background"></div>
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">{post.author?.name || 'Anonymous User'}</h3>
+            <h3 
+              className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                // TODO: Add user profile click handler
+              }}
+            >
+              {post.author?.name || 'Anonymous User'}
+            </h3>
             <p className="text-sm text-muted-foreground">{post.timestamp}</p>
           </div>
         </div>

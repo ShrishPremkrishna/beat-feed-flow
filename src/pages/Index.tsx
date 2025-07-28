@@ -18,6 +18,8 @@ const Index = () => {
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
   const [showPostDetail, setShowPostDetail] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  const [viewingUserProfile, setViewingUserProfile] = useState<any>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -105,6 +107,26 @@ const Index = () => {
     }
   };
 
+  const fetchAnyUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error:', error);
+      return null;
+    }
+  };
+
   const handleLogout = async () => {
     try {
       console.log('Logging out...');
@@ -139,12 +161,16 @@ const Index = () => {
     setShowProfile(true);
     setShowPostDetail(false);
     setHighlightedPostId(null);
+    setViewingUserId(null);
+    setViewingUserProfile(null);
   };
 
   const handleBackToFeed = () => {
     setShowProfile(false);
     setShowPostDetail(false);
     setHighlightedPostId(null);
+    setViewingUserId(null);
+    setViewingUserProfile(null);
     // Refresh profile data when going back to feed
     if (user) {
       fetchUserProfile(user.id);
@@ -171,6 +197,23 @@ const Index = () => {
     setSelectedPostId(null);
   };
 
+  const handleUserSearch = (query: string) => {
+    // This function can be expanded for additional search logic if needed
+    console.log('User search:', query);
+  };
+
+  const handleUserSelect = async (userId: string) => {
+    // Fetch the selected user's profile and show it
+    const profile = await fetchAnyUserProfile(userId);
+    if (profile) {
+      setViewingUserId(userId);
+      setViewingUserProfile(profile);
+      setShowProfile(true);
+      setShowPostDetail(false);
+      setHighlightedPostId(null);
+    }
+  };
+
   // Create navbar user object
   const navbarUser = userProfile ? {
     name: userProfile.display_name || 'User',
@@ -189,35 +232,40 @@ const Index = () => {
     }
     
     if (showProfile) {
+      // Determine which profile to show
+      const profileToShow = viewingUserProfile || userProfile;
+      const isOwnProfile = !viewingUserId && userProfile;
+      
       return (
         <UserProfile 
-          user={userProfile ? {
-            name: userProfile.display_name || 'Anonymous User',
-            username: userProfile.username || '@user',
-            avatar: userProfile.avatar_url || '',
-            bio: userProfile.bio || 'No bio available',
-            location: userProfile.location || 'Unknown',
-            joinDate: userProfile.created_at ? new Date(userProfile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently',
-            website: userProfile.website || '',
+          user={profileToShow ? {
+            name: profileToShow.display_name || 'Anonymous User',
+            username: profileToShow.username || '@user',
+            avatar: profileToShow.avatar_url || '',
+            bio: profileToShow.bio || 'No bio available',
+            location: profileToShow.location || 'Unknown',
+            joinDate: profileToShow.created_at ? new Date(profileToShow.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently',
+            website: profileToShow.website || '',
             social: {
               instagram: '',
               twitter: '',
               beatstars: ''
             },
             stats: {
-              followers: userProfile.followers_count || 0,
-              following: userProfile.following_count || 0,
-              beats: userProfile.beats_count || 0,
-              likes: userProfile.likes_count || 0
+              followers: profileToShow.followers_count || 0,
+              following: profileToShow.following_count || 0,
+              beats: profileToShow.beats_count || 0,
+              likes: profileToShow.likes_count || 0
             },
             genres: [],
             placements: [],
             rating: 0,
             isVerified: false
           } : undefined}
-          isOwnProfile={true}
+          isOwnProfile={!!isOwnProfile}
           onBackToFeed={handleBackToFeed}
           onPostClick={handlePostClick}
+          userId={viewingUserId || user?.id}
         />
       );
     }
@@ -285,6 +333,8 @@ const Index = () => {
           onNotificationsClick={() => console.log('Notifications clicked')}
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
+          onUserSearch={handleUserSearch}
+          onUserSelect={handleUserSelect}
         />
       </div>
       
