@@ -80,13 +80,13 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
   };
 
   return (
-    <div className={`bg-card border rounded-lg p-4 space-y-3 ${className}`}>
+    <div className={`bg-gradient-card border border-border/50 rounded-xl p-5 space-y-4 shadow-card ${className}`}>
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
       
       {/* Beat Info */}
-      <div className="space-y-1">
-        <h4 className="font-medium text-sm">{title}</h4>
-        {artist && <p className="text-xs text-muted-foreground">by {artist}</p>}
+      <div className="space-y-2">
+        <h4 className="font-semibold text-base text-foreground">{title}</h4>
+        {artist && <p className="text-sm text-muted-foreground">by {artist}</p>}
         
         {/* Beat Details */}
         <div className="flex gap-3 text-xs text-muted-foreground">
@@ -125,14 +125,22 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
         </div>
 
         {/* Play Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={togglePlay}
-            className="h-8 w-8 p-0"
+            className={`h-10 w-10 p-0 rounded-full transition-all duration-300 ${
+              isPlaying 
+                ? 'bg-gradient-primary shadow-glow text-white hover:shadow-intense' 
+                : 'hover:bg-primary/20 border border-primary/30'
+            }`}
           >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {isPlaying ? (
+              <Pause className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4 ml-0.5" />
+            )}
           </Button>
 
           {/* Volume Control */}

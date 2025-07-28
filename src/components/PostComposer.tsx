@@ -238,20 +238,23 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
   };
 
   return (
-    <div className="beat-card space-y-4">
+    <div className="beat-card space-y-4 animate-fade-in">
       <div className="flex items-start gap-3">
-        <img 
-          src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"
-          alt="Your avatar"
-          className="w-10 h-10 rounded-full object-cover border-2 border-primary/20"
-        />
+        <div className="relative">
+          <img 
+            src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"
+            alt="Your avatar"
+            className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-glow"
+          />
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-primary rounded-full border-2 border-background"></div>
+        </div>
         {!isReply && (
           <div className="flex-1">
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder={placeholder}
-              className="min-h-[100px] bg-background border-border resize-none"
+              className="input-enhanced min-h-[120px] resize-none text-base"
             />
           </div>
         )}

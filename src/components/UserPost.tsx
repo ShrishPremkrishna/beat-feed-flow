@@ -111,41 +111,50 @@ export const UserPost = ({ post, onLike, onComment, onShare }: UserPostProps) =>
   };
 
   return (
-    <div className="beat-card space-y-4">
+    <div className="post-card space-y-4 animate-fade-in">
       {/* Post Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <img 
-            src={post.author?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'} 
-            alt={post.author?.name || 'User'}
-            className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
-          />
+          <div className="relative">
+            <img 
+              src={post.author?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'} 
+              alt={post.author?.name || 'User'}
+              className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-card"
+            />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-accent rounded-full border-2 border-background"></div>
+          </div>
           <div>
             <h3 className="font-semibold text-foreground">{post.author?.name || 'Anonymous User'}</h3>
             <p className="text-sm text-muted-foreground">{post.timestamp}</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" className="hover:bg-secondary/50">
           <MoreHorizontal className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Post Content */}
-      <div className="text-foreground leading-relaxed">
+      <div className="text-foreground leading-relaxed text-base">
         {post.content}
       </div>
 
       {/* Post Actions */}
-      <div className="flex items-center justify-between pt-2 border-t border-border">
+      <div className="flex items-center justify-between pt-4 border-t border-border/50">
         <div className="flex items-center gap-6">
           <Button
             variant="ghost"
             size="sm"
             onClick={onLike}
-            className={`flex items-center gap-2 ${post.isLiked ? 'text-red-500' : 'text-muted-foreground'}`}
+            className={`flex items-center gap-2 transition-all duration-300 ${
+              post.isLiked 
+                ? 'text-red-500 hover:text-red-400' 
+                : 'text-muted-foreground hover:text-red-500'
+            }`}
           >
-            <Heart className={`w-4 h-4 ${post.isLiked ? 'fill-current' : ''}`} />
-            {post.likes}
+            <Heart className={`w-4 h-4 transition-all duration-300 ${
+              post.isLiked ? 'fill-current scale-110' : ''
+            }`} />
+            <span className="font-medium">{post.likes}</span>
           </Button>
           
           <Button

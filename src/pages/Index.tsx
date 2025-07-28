@@ -93,21 +93,43 @@ const Index = () => {
   if (!user) {
     return (
       <>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center space-y-6">
-            <h1 className="text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Beatify
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-md">
+        <div className="min-h-screen bg-gradient-hero flex items-center justify-center relative overflow-hidden">
+          {/* Animated background elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+          </div>
+          
+          <div className="text-center space-y-8 relative z-10 max-w-2xl px-6">
+            <div className="space-y-4">
+              <h1 className="text-7xl md:text-8xl font-bold bg-gradient-primary bg-clip-text text-transparent animate-fade-in">
+                Beatify
+              </h1>
+              <div className="w-32 h-1 bg-gradient-primary mx-auto rounded-full shadow-glow"></div>
+            </div>
+            
+            <p className="text-xl md:text-2xl text-muted-foreground max-w-lg mx-auto leading-relaxed">
               The social platform where music creators connect, share beats, and discover new collaborations
             </p>
-            <Button 
-              onClick={() => setShowAuth(true)}
-              size="lg"
-              className="btn-gradient px-8 py-3 text-lg font-semibold"
-            >
-              Join the Community
-            </Button>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+              <Button 
+                onClick={() => setShowAuth(true)}
+                size="lg"
+                className="btn-gradient px-8 py-4 text-lg font-semibold min-w-[200px] shadow-glow"
+              >
+                Join the Community
+              </Button>
+              
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex -space-x-2">
+                  <div className="w-8 h-8 bg-gradient-primary rounded-full border-2 border-background"></div>
+                  <div className="w-8 h-8 bg-gradient-accent rounded-full border-2 border-background"></div>
+                  <div className="w-8 h-8 bg-gradient-ai rounded-full border-2 border-background"></div>
+                </div>
+                <span>Join 10,000+ creators</span>
+              </div>
+            </div>
           </div>
         </div>
         <AuthModal 
@@ -120,15 +142,19 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar 
-        currentUser={navbarUser}
-        onProfileClick={() => setShowProfile(!showProfile)}
-        onNotificationsClick={() => console.log('Notifications clicked')}
-      />
+    <div className="min-h-screen bg-gradient-hero">
+      <div className="navbar">
+        <Navbar 
+          currentUser={navbarUser}
+          onProfileClick={() => setShowProfile(!showProfile)}
+          onNotificationsClick={() => console.log('Notifications clicked')}
+        />
+      </div>
       
-      <main className="p-6">
-        {renderContent()}
+      <main className="p-6 max-w-4xl mx-auto">
+        <div className="space-y-6">
+          {renderContent()}
+        </div>
       </main>
     </div>
   );
