@@ -135,6 +135,11 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Ensure dropdowns are not clipped */
+  .relative {
+    overflow: visible;
+  }
 }
 
 @layer components {
