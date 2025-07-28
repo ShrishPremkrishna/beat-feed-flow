@@ -277,8 +277,8 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
         )}
       </div>
 
-      {/* Beat Upload Section */}
-      {showBeatUpload && beatFile && (
+      {/* Beat Upload Section - Only for replies */}
+      {isReply && showBeatUpload && beatFile && (
         <div className="border border-border rounded-xl p-4 bg-gradient-card space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -367,55 +367,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       {/* Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {!isReply && !showBeatUpload && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowBeatUpload(true)}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Beat
-            </Button>
-          )}
-
-          {!isReply && showBeatUpload && !beatFile && (
-            <FileUploadArea
-              onFileSelect={(file) => handleFileUpload(file, 'beat')}
-              accept="audio/*"
-              maxSize={200}
-              currentFile={beatFile}
-              onRemoveFile={() => {
-                setBeatFile(null);
-                setShowBeatUpload(false);
-              }}
-              title="Upload Beat"
-              description="Drag and drop your beat here or click to browse"
-            />
-          )}
-
-          {!isReply && (
-            <>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'cover')}
-                className="hidden"
-                id="cover-upload"
-              />
-              <label htmlFor="cover-upload">
-                <Button variant="ghost" size="sm" className="cursor-pointer">
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Cover
-                </Button>
-              </label>
-            </>
-          )}
-
-          {coverArt && (
-            <Badge variant="secondary" className="bg-success/20 text-success">
-              Cover uploaded
-            </Badge>
-          )}
+          {/* No upload options for regular posts - only for replies */}
         </div>
 
         <Button
