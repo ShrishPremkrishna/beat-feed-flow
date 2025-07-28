@@ -5,7 +5,6 @@ import { UserProfile } from '@/components/UserProfile';
 import { PostDetail } from '@/components/PostDetail';
 import { BeatSwiper } from '@/components/BeatSwiper';
 import { AuthModal } from '@/components/AuthModal';
-import { TestComponent } from '@/components/TestComponent';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -307,7 +306,6 @@ const Index = () => {
   if (!user) {
     return (
       <>
-        <TestComponent />
         <div className="min-h-screen bg-gradient-hero flex items-center justify-center relative overflow-hidden">
           {/* Animated background elements */}
           <div className="absolute inset-0 overflow-hidden">
@@ -358,7 +356,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
-      <TestComponent />
       <div className="navbar">
         <Navbar 
           currentUser={navbarUser}
