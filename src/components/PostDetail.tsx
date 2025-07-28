@@ -136,7 +136,8 @@ export const PostDetail = ({ postId, onBack }: PostDetailProps) => {
           .from('likes')
           .select('comment_id')
           .eq('user_id', currentUser.id)
-          .in('comment_id', repliesData.map(r => r.id));
+          .in('comment_id', repliesData.map(r => r.id))
+          .not('comment_id', 'is', null);
         
         userLikes = likesData?.map(l => l.comment_id) || [];
       }
