@@ -325,13 +325,8 @@ const Index = () => {
             stats: {
               followers: profileToShow.followers_count || 0,
               following: profileToShow.following_count || 0,
-              beats: profileToShow.beats_count || 0,
               likes: profileToShow.likes_count || 0
-            },
-            
-            placements: [],
-            rating: 0,
-            isVerified: false
+            }
           } : undefined}
           isOwnProfile={!!isOwnProfile}
           onBackToFeed={handleBackToFeed}

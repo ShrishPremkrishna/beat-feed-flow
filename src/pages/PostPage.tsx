@@ -149,12 +149,12 @@ const PostPage = () => {
       <div className="navbar">
         <Navbar 
           currentUser={navbarUser}
-          onProfileClick={handleProfileClick}
-          onNotificationsClick={() => console.log('Notifications clicked')}
+          onUserProfileClick={handleProfileClick}
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
           onUserSearch={handleUserSearch}
-          onUserSelect={handleUserSelect}
+          onTabChange={() => {}}
+          activeTab="home"
         />
       </div>
       
