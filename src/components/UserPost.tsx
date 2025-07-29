@@ -167,6 +167,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         }
       }
 
+      
       // Transform comments with author info and beat data
       let transformedComments = commentsData.map((comment: any) => {
         const profile = profileMap.get(comment.user_id);
