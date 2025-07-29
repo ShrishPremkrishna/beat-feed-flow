@@ -13,7 +13,6 @@ import { ShareModal } from './ShareModal';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { formatNumber, formatFollowerCount } from '@/lib/utils';
 
 interface UserProfileProps {
   user?: {
@@ -32,9 +31,13 @@ interface UserProfileProps {
     stats: {
       followers: number;
       following: number;
+      beats: number;
       likes: number;
     };
-
+    genres: string[];
+    placements: string[];
+    rating: number;
+    isVerified: boolean;
   };
   isOwnProfile?: boolean;
   onBackToFeed?: () => void;
@@ -53,6 +56,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
   // All stats as state variables
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [beatsCount, setBeatsCount] = useState(0);
   const [likesCount, setLikesCount] = useState(0);
   
   const [followersList, setFollowersList] = useState<any[]>([]);
@@ -67,43 +71,39 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
 
 
   const defaultUser = {
-    name: 'User',
-    username: '@user',
-    avatar: '',
-    bio: '',
-    joinDate: 'Recently',
+    name: 'BeatMaker Pro',
+    username: '@beatmaker_pro',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop&crop=face',
+    bio: 'Producer specializing in trap & hip-hop beats. Over 1M streams across platforms. Available for custom work.',
+    location: 'Atlanta, GA',
+    joinDate: 'January 2022',
+    website: 'beatmaker.pro',
     social: {
-      instagram: '',
-      twitter: '',
-      beatstars: ''
+      instagram: 'beatmaker_pro',
+      twitter: 'beatmaker_pro',
+      beatstars: 'beatmaker-pro'
     },
     stats: {
-      followers: 0,
-      following: 0,
-      likes: 0
-    }
+      followers: 12500,
+      following: 340,
+      beats: 156,
+      likes: 45200
+    },
+    genres: ['Trap', 'Hip-Hop', 'R&B', 'Drill'],
+    placements: ['Lil Baby', 'Future', 'Travis Scott'],
+    rating: 4.8,
+    isVerified: true
   };
 
   const profileUser = currentProfile || user || defaultUser;
 
   useEffect(() => {
-    console.log('UserProfile useEffect triggered with userId:', userId);
-    setLoading(true);
-    
-    const loadAll = async () => {
-      try {
-        await loadUserActivity();
-        if (userId) {
-          await checkFollowStatus();
-        }
-        // Always load profile stats (for own profile or other user's profile)
-        await loadProfileStats();
-      } catch (error) {
-        console.error('Error in UserProfile useEffect:', error);
-      }
-    };
-    
-    loadAll();
+    loadUserActivity();
+    if (userId) {
+      checkFollowStatus();
+    }
+    // Always load profile stats (for own profile or other user's profile)
+    loadProfileStats();
   }, [userId]);
 
   const loadUserActivity = async () => {
@@ -176,7 +176,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
       // Load user profile for display (the one being viewed)
       const { data: userProfile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('display_name, username, avatar_url, followers_count, following_count')
         .eq('user_id', targetUserId)
         .single();
 
@@ -195,21 +195,6 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
       if (userProfile) {
         setFollowersCount(userProfile.followers_count || 0);
         setFollowingCount(userProfile.following_count || 0);
-        
-        // Set current profile with complete database data
-        setCurrentProfile({
-          ...(user || defaultUser),
-          name: userProfile.display_name || userProfile.username || 'Anonymous User',
-          avatar: userProfile.avatar_url || '',
-          // Include all database profile fields for editing
-          ...userProfile,
-          // Update stats with fresh data
-          stats: {
-            ...(user?.stats || defaultUser.stats),
-            followers: userProfile.followers_count || 0,
-            following: userProfile.following_count || 0
-          }
-        });
       }
     } catch (error) {
       console.error('Error loading user activity:', error);
@@ -394,10 +379,9 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
       
       if (!targetUserId) return;
 
-      // Get follower/following counts from profiles
       const { data: profileStats, error } = await supabase
         .from('profiles')
-        .select('followers_count, following_count')
+        .select('followers_count, following_count, beats_count, likes_count')
         .eq('user_id', targetUserId)
         .single();
 
@@ -409,24 +393,8 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
       if (profileStats) {
         setFollowersCount(profileStats.followers_count || 0);
         setFollowingCount(profileStats.following_count || 0);
-      }
-
-      // Calculate total likes from actual posts and replies
-      const { data: posts, error: postsError } = await supabase
-        .from('posts')
-        .select('likes_count')
-        .eq('user_id', targetUserId);
-
-      const { data: replies, error: repliesError } = await supabase
-        .from('comments')
-        .select('likes_count')
-        .eq('user_id', targetUserId);
-
-      if (!postsError && !repliesError) {
-        const totalPostLikes = posts?.reduce((sum, post) => sum + (post.likes_count || 0), 0) || 0;
-        const totalReplyLikes = replies?.reduce((sum, reply) => sum + (reply.likes_count || 0), 0) || 0;
-        const totalLikes = totalPostLikes + totalReplyLikes;
-        setLikesCount(totalLikes);
+        setBeatsCount(profileStats.beats_count || 0);
+        setLikesCount(profileStats.likes_count || 0);
       }
     } catch (error) {
       console.error('Error loading profile stats:', error);
@@ -434,20 +402,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
   };
 
   const handleProfileUpdate = (updatedProfile: any) => {
-    // Update currentProfile with complete database data and proper structure
-    setCurrentProfile({
-      ...(user || defaultUser),
-      name: updatedProfile.display_name || updatedProfile.username || 'Anonymous User',
-      avatar: updatedProfile.avatar_url || '',
-      // Include all database profile fields
-      ...updatedProfile,
-      // Preserve stats structure
-      stats: {
-        ...(user?.stats || defaultUser.stats),
-        followers: updatedProfile.followers_count || 0,
-        following: updatedProfile.following_count || 0
-      }
-    });
+    setCurrentProfile(updatedProfile);
   };
 
   const handleShare = (postId: string) => {
@@ -552,27 +507,6 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
     );
   }
 
-  // Show loading state while data is being fetched
-  if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        {onBackToFeed && (
-          <Button 
-            variant="ghost" 
-            onClick={onBackToFeed}
-            className="mb-4 hover:bg-muted"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Feed
-          </Button>
-        )}
-        <div className="text-center py-12 text-muted-foreground">
-          Loading profile...
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Back to Feed Button */}
@@ -597,6 +531,11 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
               avatarUrl={profileUser.avatar}
               size="xl"
             />
+            {profileUser.isVerified && (
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                <Star className="w-4 h-4 text-white fill-current" />
+              </div>
+            )}
           </div>
 
           {/* Profile Info */}
@@ -604,6 +543,9 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold text-foreground">{profileUser.name}</h1>
+                {profileUser.isVerified && (
+                  <Badge className="bg-primary/20 text-primary">Verified</Badge>
+                )}
               </div>
               <p className="text-muted-foreground text-lg">{profileUser.username}</p>
             </div>
@@ -613,8 +555,22 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
             {/* Meta Info */}
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                {profileUser.location}
+              </div>
+              <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
                 Joined {profileUser.joinDate}
+              </div>
+              <div className="flex items-center gap-1">
+                <LinkIcon className="w-4 h-4" />
+                <a href={`https://${profileUser.website}`} className="text-primary hover:underline">
+                  {profileUser.website}
+                </a>
+              </div>
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 fill-current text-yellow-500" />
+                {profileUser.rating} rating
               </div>
             </div>
 
@@ -695,7 +651,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-border">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-border">
           <div 
             className={`text-center p-2 rounded transition-colors ${
               isOwnProfile 
@@ -704,7 +660,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
             }`}
             onClick={isOwnProfile ? loadFollowersList : undefined}
           >
-                            <div className="text-2xl font-bold text-foreground">{formatFollowerCount(followersCount)}</div>
+            <div className="text-2xl font-bold text-foreground">{followersCount}</div>
             <div className="text-sm text-muted-foreground">Followers</div>
           </div>
           <div 
@@ -715,25 +671,51 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
             }`}
             onClick={isOwnProfile ? loadFollowingList : undefined}
           >
-                            <div className="text-2xl font-bold text-foreground">{formatFollowerCount(followingCount)}</div>
+            <div className="text-2xl font-bold text-foreground">{followingCount}</div>
             <div className="text-sm text-muted-foreground">Following</div>
           </div>
           <div className="text-center">
-                            <div className="text-2xl font-bold text-foreground">{formatNumber(likesCount)}</div>
+            <div className="text-2xl font-bold text-foreground">{beatsCount}</div>
+            <div className="text-sm text-muted-foreground">Beats</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-foreground">{likesCount.toLocaleString()}</div>
             <div className="text-sm text-muted-foreground">Total Likes</div>
           </div>
         </div>
 
+        {/* Genres */}
+        <div className="mt-6 pt-6 border-t border-border">
+          <h3 className="font-semibold mb-3 text-foreground">Genres</h3>
+          <div className="flex flex-wrap gap-2">
+            {profileUser.genres.map((genre) => (
+              <Badge key={genre} variant="secondary" className="bg-primary/20 text-primary">
+                {genre}
+              </Badge>
+            ))}
+          </div>
+        </div>
 
-
-
+        {/* Notable Placements */}
+        {profileUser.placements.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-border">
+            <h3 className="font-semibold mb-3 text-foreground">Notable Placements</h3>
+            <div className="flex flex-wrap gap-2">
+              {profileUser.placements.map((artist) => (
+                <Badge key={artist} className="bg-accent/20 text-accent">
+                  {artist}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content Tabs */}
       <Tabs defaultValue="posts" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 bg-muted">
-          <TabsTrigger value="posts">My Posts ({userPosts.length})</TabsTrigger>
-          <TabsTrigger value="replies">My Replies ({userReplies.length})</TabsTrigger>
+          <TabsTrigger value="posts">My Posts</TabsTrigger>
+          <TabsTrigger value="replies">My Replies</TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="space-y-6">
@@ -796,11 +778,19 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0">
-                    <InitialsAvatar
-                      name={currentProfile?.name || 'User'}
-                      avatarUrl={currentProfile?.avatar}
-                      size="md"
-                    />
+                    {currentProfile?.avatar ? (
+                      <img 
+                        src={currentProfile.avatar}
+                        alt={currentProfile?.name || 'User'}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                        <span className="text-lg font-bold text-muted-foreground">
+                          {(currentProfile?.name || 'U').charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
@@ -833,7 +823,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                      <div className="flex items-center gap-4 pt-3 border-t border-border/30 mt-3">
                        <div className="flex items-center gap-1 text-muted-foreground">
                          <Heart className={`w-4 h-4 ${reply.isLiked ? 'fill-current text-red-500' : ''}`} />
-                         <span className="text-sm">{formatNumber(reply.likes_count || 0)} likes</span>
+                         <span className="text-sm">{reply.likes_count || 0} likes</span>
                        </div>
                      </div>
                    </div>

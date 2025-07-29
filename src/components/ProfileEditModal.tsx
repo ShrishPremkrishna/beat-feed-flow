@@ -6,8 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
-import { Camera, Instagram, Twitter, Music, Globe, Volume2, Youtube, Apple, Video } from 'lucide-react';
-import { SpotifyIcon, AppleMusicIcon, TikTokIcon, BeatStarsIcon, SoundCloudIcon } from '@/components/ui/brand-icons';
+import { Camera, Instagram, Twitter, Music, Globe, Volume2, Youtube } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { validateURL, validateSocialHandle, sanitizeText, validateImageFile, rateLimiter } from '@/lib/security';
@@ -29,14 +28,14 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
     display_name: '',
     username: '',
     bio: '',
+    location: '',
+    website: '',
     instagram: '',
     twitter: '',
     beatstars: '',
     soundcloud: '',
     spotify: '',
-    apple_music: '',
     youtube: '',
-    tiktok: '',
     avatar_url: ''
   });
 
@@ -46,14 +45,14 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
         display_name: currentProfile.display_name || '',
         username: currentProfile.username || '',
         bio: currentProfile.bio || '',
+        location: currentProfile.location || '',
+        website: currentProfile.website || '',
         instagram: currentProfile.instagram || '',
         twitter: currentProfile.twitter || '',
         beatstars: currentProfile.beatstars || '',
         soundcloud: currentProfile.soundcloud || '',
         spotify: currentProfile.spotify || '',
-        apple_music: currentProfile.apple_music || '',
         youtube: currentProfile.youtube || '',
-        tiktok: currentProfile.tiktok || '',
         avatar_url: currentProfile.avatar_url || ''
       });
     }
@@ -172,7 +171,10 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-
+    // Validate URLs
+    if (formData.website && !validateURL(formData.website)) {
+      errors.website = 'Please enter a valid website URL';
+    }
 
     // Validate social handles
     if (formData.instagram && !validateSocialHandle(formData.instagram, 'instagram')) {
@@ -240,14 +242,14 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
         display_name: sanitizeText(formData.display_name),
         username: sanitizeText(formData.username).toLowerCase().replace(/\s+/g, '_'),
         bio: sanitizeText(formData.bio),
+        location: sanitizeText(formData.location),
+        website: formData.website.trim(),
         instagram: formData.instagram.replace(/^@/, '').trim(),
         twitter: formData.twitter.replace(/^@/, '').trim(),
         beatstars: formData.beatstars.trim(),
         soundcloud: formData.soundcloud.trim(),
         spotify: formData.spotify.trim(),
-        apple_music: formData.apple_music.trim(),
         youtube: formData.youtube.replace(/^@/, '').trim(),
-        tiktok: formData.tiktok.replace(/^@/, '').trim(),
         avatar_url: formData.avatar_url,
       };
 
@@ -267,8 +269,11 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
 
       console.log('Profile updated successfully:', data);
 
-      // Update the profile in parent component with the fresh database data
-      onProfileUpdate(data[0]); // data[0] contains the updated record from the database
+      // Update the profile in parent component
+      onProfileUpdate({
+        ...currentProfile,
+        ...formData
+      });
 
       toast({
         title: "Profile updated",
@@ -330,13 +335,6 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
                   id="display_name"
                   value={formData.display_name}
                   onChange={(e) => setFormData(prev => ({ ...prev, display_name: sanitizeText(e.target.value) }))}
-                  onFocus={(e) => {
-                    // Move cursor to end instead of selecting all text
-                    const target = e.target as HTMLInputElement;
-                    setTimeout(() => {
-                      target.setSelectionRange(target.value.length, target.value.length);
-                    }, 0);
-                  }}
                   placeholder="Your display name"
                   maxLength={50}
                   required
@@ -367,16 +365,86 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
             />
           </div>
 
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) => setFormData(prev => ({ ...prev, location: sanitizeText(e.target.value) }))}
+                  placeholder="City, Country"
+                  maxLength={100}
+                />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+                <Input
+                  id="website"
+                  value={formData.website}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, website: value }));
+                    // Clear validation error on change
+                    if (validationErrors.website) {
+                      setValidationErrors(prev => ({ ...prev, website: '' }));
+                    }
+                  }}
+                  placeholder="yoursite.com"
+                  className={validationErrors.website ? 'border-destructive' : ''}
+                />
+                {validationErrors.website && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.website}</p>
+                )}
+            </div>
+          </div>
 
           {/* Social Links */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Social Links</h3>
             
             <div className="space-y-3">
-              {/* 1. BeatStars */}
               <div className="flex items-center space-x-3">
-                <BeatStarsIcon className="w-5 h-5 text-orange-500" />
+                <Instagram className="w-5 h-5 text-pink-500" />
+                <Input
+                  value={formData.instagram}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, instagram: value }));
+                    // Clear validation error on change
+                    if (validationErrors.instagram) {
+                      setValidationErrors(prev => ({ ...prev, instagram: '' }));
+                    }
+                  }}
+                  placeholder="Instagram handle"
+                  className={validationErrors.instagram ? 'border-destructive' : ''}
+                />
+                {validationErrors.instagram && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.instagram}</p>
+                )}
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Twitter className="w-5 h-5 text-blue-400" />
+                <Input
+                  value={formData.twitter}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, twitter: value }));
+                    // Clear validation error on change
+                    if (validationErrors.twitter) {
+                      setValidationErrors(prev => ({ ...prev, twitter: '' }));
+                    }
+                  }}
+                  placeholder="Twitter handle"
+                  className={validationErrors.twitter ? 'border-destructive' : ''}
+                />
+                {validationErrors.twitter && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.twitter}</p>
+                )}
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Music className="w-5 h-5 text-orange-500" />
                 <Input
                   value={formData.beatstars}
                   onChange={(e) => {
@@ -395,72 +463,8 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
                 )}
               </div>
 
-              {/* 2. Instagram */}
               <div className="flex items-center space-x-3">
-                <Instagram className="w-5 h-5 text-pink-500" />
-                <Input
-                  value={formData.instagram}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFormData(prev => ({ ...prev, instagram: value }));
-                    // Clear validation error on change
-                    if (validationErrors.instagram) {
-                      setValidationErrors(prev => ({ ...prev, instagram: '' }));
-                    }
-                  }}
-                  placeholder="Instagram profile"
-                  className={validationErrors.instagram ? 'border-destructive' : ''}
-                />
-                {validationErrors.instagram && (
-                  <p className="text-xs text-destructive mt-1">{validationErrors.instagram}</p>
-                )}
-              </div>
-
-              {/* 3. YouTube */}
-              <div className="flex items-center space-x-3">
-                <Youtube className="w-5 h-5 text-red-500" />
-                <Input
-                  value={formData.youtube}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFormData(prev => ({ ...prev, youtube: value }));
-                    // Clear validation error on change
-                    if (validationErrors.youtube) {
-                      setValidationErrors(prev => ({ ...prev, youtube: '' }));
-                    }
-                  }}
-                  placeholder="YouTube channel"
-                  className={validationErrors.youtube ? 'border-destructive' : ''}
-                />
-                {validationErrors.youtube && (
-                  <p className="text-xs text-destructive mt-1">{validationErrors.youtube}</p>
-                )}
-              </div>
-
-              {/* 4. TikTok */}
-              <div className="flex items-center space-x-3">
-                <TikTokIcon className="w-5 h-5 text-red-600" />
-                <Input
-                  value={formData.tiktok}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFormData(prev => ({ ...prev, tiktok: value }));
-                    // Clear validation error on change
-                    if (validationErrors.tiktok) {
-                      setValidationErrors(prev => ({ ...prev, tiktok: '' }));
-                    }
-                  }}
-                  placeholder="TikTok profile"
-                  className={validationErrors.tiktok ? 'border-destructive' : ''}
-                />
-                {validationErrors.tiktok && (
-                  <p className="text-xs text-destructive mt-1">{validationErrors.tiktok}</p>
-                )}
-              </div>
-
-              {/* 5. SoundCloud */}
-              <div className="flex items-center space-x-3">
-                <SoundCloudIcon className="w-5 h-5 text-orange-500" />
+                <Volume2 className="w-5 h-5 text-orange-600" />
                 <Input
                   value={formData.soundcloud}
                   onChange={(e) => {
@@ -479,9 +483,8 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
                 )}
               </div>
 
-              {/* 6. Spotify */}
               <div className="flex items-center space-x-3">
-                <SpotifyIcon className="w-5 h-5 text-green-500" />
+                <Music className="w-5 h-5 text-green-500" />
                 <Input
                   value={formData.spotify}
                   onChange={(e) => {
@@ -500,46 +503,24 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
                 )}
               </div>
 
-              {/* 7. Apple Music */}
               <div className="flex items-center space-x-3">
-                <AppleMusicIcon className="w-5 h-5 text-slate-800" />
+                <Youtube className="w-5 h-5 text-red-500" />
                 <Input
-                  value={formData.apple_music}
+                  value={formData.youtube}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setFormData(prev => ({ ...prev, apple_music: value }));
+                    setFormData(prev => ({ ...prev, youtube: value }));
                     // Clear validation error on change
-                    if (validationErrors.apple_music) {
-                      setValidationErrors(prev => ({ ...prev, apple_music: '' }));
+                    if (validationErrors.youtube) {
+                      setValidationErrors(prev => ({ ...prev, youtube: '' }));
                     }
                   }}
-                  placeholder="Apple Music artist profile"
-                  className={validationErrors.apple_music ? 'border-destructive' : ''}
+                  placeholder="YouTube channel"
+                  className={validationErrors.youtube ? 'border-destructive' : ''}
                 />
-                {validationErrors.apple_music && (
-                  <p className="text-xs text-destructive mt-1">{validationErrors.apple_music}</p>
+                {validationErrors.youtube && (
+                  <p className="text-xs text-destructive mt-1">{validationErrors.youtube}</p>
                 )}
-              </div>
-
-              {/* 8. Twitter */}
-              <div className="flex items-center space-x-3">
-                <Twitter className="w-5 h-5 text-blue-400" />
-                <Input
-                  value={formData.twitter}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFormData(prev => ({ ...prev, twitter: value }));
-                    // Clear validation error on change
-                    if (validationErrors.twitter) {
-                      setValidationErrors(prev => ({ ...prev, twitter: '' }));
-                    }
-                  }}
-                  placeholder="Twitter profile"
-                  className={validationErrors.twitter ? 'border-destructive' : ''}
-                />
-                                 {validationErrors.twitter && (
-                   <p className="text-xs text-destructive mt-1">{validationErrors.twitter}</p>
-                 )}
               </div>
             </div>
           </div>

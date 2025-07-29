@@ -17,8 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { InitialsAvatar } from '@/components/ui/initials-avatar';
-import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserPostProps {
@@ -185,14 +183,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             name: profile?.display_name || profile?.username || 'Anonymous User',
             avatar: profile?.avatar_url || ''
           },
-                      timestamp: new Date(comment.created_at).toLocaleString(undefined, { 
-              year: 'numeric', 
-              month: 'numeric', 
-              day: 'numeric', 
-              hour: 'numeric', 
-              minute: '2-digit',
-              hour12: true
-            }),
+          timestamp: new Date(comment.created_at).toLocaleString(),
           likes: comment.likes_count || 0,
           isLiked: userLikes.includes(comment.id),
           beatReaction: comment.beats?.id ? userBeatReactions[comment.beats.id] : null
@@ -394,12 +385,19 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
               }
             }}
           >
-            <InitialsAvatar
-              name={post.author?.name || 'User'}
-              avatarUrl={post.author?.avatar}
-              size="md"
-              className="shadow-card hover:border-primary/50 transition-colors"
-            />
+            {post.author?.avatar ? (
+              <img 
+                src={post.author.avatar} 
+                alt={post.author?.name || 'User'}
+                className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-card hover:border-primary/50 transition-colors"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-card hover:border-primary/50 transition-colors flex items-center justify-center">
+                <span className="text-lg font-bold text-muted-foreground">
+                  {(post.author?.name || 'U').charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
           <div>
             <h3 
@@ -468,7 +466,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             <Heart className={`w-4 h-4 transition-all duration-300 ${
               post.isLiked ? 'fill-current scale-110' : ''
             }`} />
-                                    <span className="font-medium">{formatNumber(post.likes)}</span>
+            <span className="font-medium">{post.likes}</span>
           </Button>
           
           <Button
@@ -599,12 +597,19 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                     }
                   }}
                 >
-                  <InitialsAvatar
-                    name={reply.author?.name || 'User'}
-                    avatarUrl={reply.author?.avatar}
-                    size="sm"
-                    className="hover:border-primary/40 transition-colors"
-                  />
+                  {reply.author?.avatar ? (
+                    <img 
+                      src={reply.author.avatar} 
+                      alt={reply.author?.name || 'User'}
+                      className="w-8 h-8 rounded-full object-cover border border-primary/20 hover:border-primary/40 transition-colors"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-muted border border-primary/20 hover:border-primary/40 transition-colors flex items-center justify-center">
+                      <span className="text-sm font-bold text-muted-foreground">
+                        {(reply.author?.name || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 bg-muted rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
@@ -699,7 +704,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                        <Heart className={`w-3 h-3 transition-all duration-300 ${
                          reply.isLiked ? 'fill-current scale-110' : ''
                        }`} />
-                                                     <span className="text-xs font-medium">{formatNumber(reply.likes)}</span>
+                       <span className="text-xs font-medium">{reply.likes}</span>
                      </Button>
                    </div>
                 </div>
