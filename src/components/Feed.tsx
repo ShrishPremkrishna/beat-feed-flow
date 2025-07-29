@@ -131,7 +131,14 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
             name: profile?.display_name || profile?.username || 'Anonymous User',
             avatar: profile?.avatar_url || ''
           },
-          timestamp: new Date(post.created_at).toLocaleString(),
+          timestamp: new Date(post.created_at).toLocaleString(undefined, { 
+            year: 'numeric', 
+            month: 'numeric', 
+            day: 'numeric', 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true
+          }),
           likes: post.likes_count || 0,
           comments: post.comments_count || 0,
           isLiked: userLikes.includes(post.id)

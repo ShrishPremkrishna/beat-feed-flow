@@ -6,6 +6,7 @@ import { BeatPlayer } from './BeatPlayer';
 import { ShareModal } from './ShareModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { formatNumber } from '@/lib/utils';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -81,7 +82,14 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
           name: authorProfile?.display_name || authorProfile?.username || 'Anonymous User',
           avatar: authorProfile?.avatar_url || ''
         },
-        timestamp: new Date(postData.created_at).toLocaleString(),
+        timestamp: new Date(postData.created_at).toLocaleString(undefined, { 
+          year: 'numeric', 
+          month: 'numeric', 
+          day: 'numeric', 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true
+        }),
         likes: postData.likes_count || 0,
         comments: postData.comments_count || 0,
         isLiked: false // TODO: Check if current user liked this post
@@ -159,7 +167,14 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
             name: profile?.display_name || profile?.username || 'Anonymous User',
             avatar: profile?.avatar_url || ''
           },
-          timestamp: new Date(reply.created_at).toLocaleString(),
+          timestamp: new Date(reply.created_at).toLocaleString(undefined, { 
+            year: 'numeric', 
+            month: 'numeric', 
+            day: 'numeric', 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true
+          }),
           likes: reply.likes_count || 0,
           isLiked: userLikes.includes(reply.id)
         };
@@ -420,7 +435,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
                 className="flex items-center gap-2 text-muted-foreground hover:text-primary"
               >
                 <Heart className="w-4 h-4" />
-                <span>{post.likes}</span>
+                                  <span>{formatNumber(post.likes)}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -583,7 +598,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
                        <Heart className={`w-3 h-3 transition-all duration-300 ${
                          reply.isLiked ? 'fill-current scale-110' : ''
                        }`} />
-                       <span className="text-xs font-medium">{reply.likes}</span>
+                                                     <span className="text-xs font-medium">{formatNumber(reply.likes)}</span>
                      </Button>
                    </div>
                 </div>
