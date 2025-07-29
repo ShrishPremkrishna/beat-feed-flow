@@ -58,7 +58,7 @@ export const ShareModal = ({ isOpen, onClose, url, title = "Share Post" }: Share
                 value={url}
                 readOnly
                 className="flex-1 bg-muted/50 font-mono text-sm"
-                onClick={(e) => e.target.select()}
+                onClick={(e) => (e.target as HTMLInputElement).select()}
               />
               <Button
                 onClick={handleCopy}

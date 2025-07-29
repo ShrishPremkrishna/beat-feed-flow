@@ -328,7 +328,7 @@ const Index = () => {
               beats: profileToShow.beats_count || 0,
               likes: profileToShow.likes_count || 0
             },
-            genres: [],
+            
             placements: [],
             rating: 0,
             isVerified: false
@@ -404,7 +404,7 @@ const Index = () => {
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
           onUserSearch={handleUserSearch}
-          onUserSelect={handleUserSelect}
+          
           onTabChange={handleTabChange}
           activeTab={activeTab}
 
