@@ -163,7 +163,19 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
   };
 
   const handleNewPost = (post: any) => {
-    setPosts(prev => [post, ...prev]);
+    // Ensure the post has all required properties to match the expected format
+    const normalizedPost = {
+      ...post,
+      likes: post.likes || 0,
+      comments: post.comments || 0,
+      isLiked: post.isLiked || false,
+      author: {
+        name: post.author?.name || 'Anonymous User',
+        avatar: post.author?.avatar || ''
+      },
+      timestamp: post.timestamp || 'just now'
+    };
+    setPosts(prev => [normalizedPost, ...prev]);
   };
 
   const handleLike = async (postId: string) => {
