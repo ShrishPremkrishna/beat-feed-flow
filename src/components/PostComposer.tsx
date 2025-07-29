@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileUploadArea } from '@/components/FileUploadArea';
+import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -309,19 +310,12 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     >
       <div className="flex items-start gap-3">
         <div className="relative">
-          {userProfile?.avatar_url ? (
-            <img 
-              src={userProfile.avatar_url}
-              alt="Your avatar"
-              className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-glow"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-glow flex items-center justify-center">
-              <span className="text-lg font-bold text-muted-foreground">
-                {(userProfile?.display_name || userProfile?.username || 'U').charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
+          <InitialsAvatar
+            name={userProfile?.display_name || userProfile?.username || 'User'}
+            avatarUrl={userProfile?.avatar_url}
+            size="md"
+            className="shadow-glow"
+          />
         </div>
         {!isReply && (
           <div className="flex-1">
