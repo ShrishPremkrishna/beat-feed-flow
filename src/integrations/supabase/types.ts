@@ -262,6 +262,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          apple_music: string | null
           avatar_url: string | null
           beats_count: number | null
           beatstars: string | null
@@ -276,6 +277,7 @@ export type Database = {
           location: string | null
           soundcloud: string | null
           spotify: string | null
+          tiktok: string | null
           twitter: string | null
           updated_at: string
           user_id: string
@@ -284,6 +286,7 @@ export type Database = {
           youtube: string | null
         }
         Insert: {
+          apple_music?: string | null
           avatar_url?: string | null
           beats_count?: number | null
           beatstars?: string | null
@@ -298,6 +301,7 @@ export type Database = {
           location?: string | null
           soundcloud?: string | null
           spotify?: string | null
+          tiktok?: string | null
           twitter?: string | null
           updated_at?: string
           user_id: string
@@ -306,6 +310,7 @@ export type Database = {
           youtube?: string | null
         }
         Update: {
+          apple_music?: string | null
           avatar_url?: string | null
           beats_count?: number | null
           beatstars?: string | null
@@ -320,6 +325,7 @@ export type Database = {
           location?: string | null
           soundcloud?: string | null
           spotify?: string | null
+          tiktok?: string | null
           twitter?: string | null
           updated_at?: string
           user_id?: string

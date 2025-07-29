@@ -149,7 +149,7 @@ const PostPage = () => {
       <div className="navbar">
         <Navbar 
           currentUser={navbarUser}
-          onUserProfileClick={handleProfileClick}
+          onUserProfileClick={() => {}}
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
           onUserSearch={handleUserSearch}
