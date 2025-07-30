@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* Outside Lands Bright Pastel Theme */
-    --background: 54 42% 89%;    /* Light Cream */
+    --background: 158 59% 46%;   /* Green Accent Background */
     --foreground: 170 51% 13%;   /* Dark Green */
 
     --card: 54 42% 89%;
@@ -37,7 +37,7 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 54 42% 89%;
 
-    --border: 170 30% 40%;
+    --border: 170 51% 13%;       /* Dark Green for borders */
     --input: 54 42% 89%;
     --ring: 55 93% 65%;
 
@@ -186,7 +186,7 @@
   /* Enhanced Post Card */
   .post-card {
     background: var(--gradient-card);
-    border: 1px solid hsl(var(--border));
+    border: 3px solid hsl(var(--border));
     border-radius: 1.25rem;
     padding: 1.5rem;
     transition: var(--transition-smooth);
@@ -275,7 +275,7 @@
 
   /* Navbar Enhancement */
   .navbar {
-    background: var(--gradient-card);
+    background: hsl(170 51% 13%);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid hsl(var(--border) / 0.5);
     box-shadow: var(--shadow-card);

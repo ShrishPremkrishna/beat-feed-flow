@@ -125,7 +125,7 @@ export const Navbar = ({
               
               {/* Brand Text */}
               <div className="flex flex-col">
-            <h1 className="text-2xl font-bold text-accent transition-all duration-300">
+            <h1 className="text-2xl font-bold text-accent-secondary transition-all duration-300">
               Beatify
             </h1>
                 <div className="w-full h-0.5 bg-gradient-primary rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
@@ -184,7 +184,7 @@ export const Navbar = ({
                 /* Sign In Button */
                 <Button
                   onClick={onSignIn}
-                  variant="outline"
+                  variant="yellow"
                   className="flex items-center gap-2"
                 >
                   <User className="w-4 h-4" />
