@@ -125,9 +125,9 @@ export const Navbar = ({
               
               {/* Brand Text */}
               <div className="flex flex-col">
-                <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent group-hover:bg-gradient-accent group-hover:bg-clip-text transition-all duration-300">
-                  Beatify
-                </h1>
+            <h1 className="text-2xl font-bold text-accent transition-all duration-300">
+              Beatify
+            </h1>
                 <div className="w-full h-0.5 bg-gradient-primary rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
               </div>
             </div>
