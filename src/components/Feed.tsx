@@ -268,7 +268,7 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
 
       {/* Feed Content */}
       <div className="space-y-6">
-        {console.log('Rendering feed - posts:', posts.length, 'loading:', loading, 'activeTab:', activeTab, 'isAuthenticated:', isAuthenticated)}
+        {/* {console.log('Rendering feed - posts:', posts.length, 'loading:', loading, 'activeTab:', activeTab, 'isAuthenticated:', isAuthenticated)} */}
         {loading ? (
           <div className="beat-card text-center py-12">
             <div className="text-muted-foreground text-lg mb-2">Loading...</div>

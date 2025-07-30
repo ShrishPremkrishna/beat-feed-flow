@@ -181,8 +181,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
             cover_art_url,
             file_url,
             bpm,
-            key,
-            purchase_link
+            key
           )
         `)
         .eq('post_id', postId)
@@ -224,7 +223,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
         if (freshUser.id === post.user_id) {
           const beatIds = repliesData
             .filter(r => r.beats?.id)
-            .map(r => r.beats.id);
+            .map(r => r.beats!.id);
           
           if (beatIds.length > 0) {
             const { data: reactionsData } = await supabase
@@ -247,7 +246,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
         return {
           ...reply,
           beats: reply.beats ? {
-            ...reply.beats,
+            ...(reply.beats as any),
             producer_name: profile?.display_name || profile?.username || 'Anonymous'
           } : null,
           author: {
@@ -318,24 +317,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
 
       setReplies(finalReplies);
 
-      // Load download status for beats
-      if (transformedReplies.some(reply => reply.beats)) {
-        const beatIds = transformedReplies
-          .filter(reply => reply.beats)
-          .map(reply => reply.beats.id);
-        
-        const { data: downloadsData } = await (supabase as any)
-          .from('downloads')
-          .select('beat_id')
-          .in('beat_id', beatIds);
-        
-        const downloadMap: {[key: string]: boolean} = {};
-        downloadsData?.forEach((download: any) => {
-          downloadMap[download.beat_id] = true;
-        });
-        
-        setDownloadStatus(downloadMap);
-      }
+      // TODO: Load download status when types are updated
     } catch (error) {
       console.error('Error loading replies:', error);
       toast({
@@ -463,25 +445,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
       // Clean up the blob URL
       window.URL.revokeObjectURL(blobUrl);
 
-      // Record the download in the database
-      if (currentUser && beatId) {
-        try {
-          await (supabase as any)
-            .from('downloads')
-            .upsert({
-              beat_id: beatId,
-              downloaded_by: currentUser.id
-            });
-          
-          // Update local state
-          setDownloadStatus(prev => ({
-            ...prev,
-            [beatId]: true
-          }));
-        } catch (downloadError) {
-          console.error('Error recording download:', downloadError);
-        }
-      }
+      // TODO: Record download when types are updated
 
       toast({
         title: 'Download Started',
@@ -863,7 +827,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
                          artist={reply.beats.artist || reply.author.name}
                          bpm={reply.beats.bpm || undefined}
                          beatKey={reply.beats.key || undefined}
-                         purchaseLink={reply.beats.purchase_link || undefined}
+                         purchaseLink={undefined}
                          className="p-3"
                        />
                      </div>

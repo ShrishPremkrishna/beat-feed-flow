@@ -163,8 +163,6 @@ const PostPage = () => {
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
           onUserSearch={handleUserSearch}
-          onTabChange={() => {}}
-          activeTab="home"
         />
       </div>
       

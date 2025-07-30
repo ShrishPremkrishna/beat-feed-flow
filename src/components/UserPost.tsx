@@ -120,7 +120,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, display_name, username, avatar_url')
-        .in('user_id', userIds);
+        .in('user_id', userIds as string[]);
 
       if (profilesError) throw profilesError;
 

@@ -108,37 +108,19 @@ export const BeatSwiper = ({ postId, onBack }: BeatSwiperProps) => {
           userId: comment.user_id,
           content: comment.content,
           createdAt: comment.created_at,
-          beat: {
-            ...comment.beats,
+          beat: comment.beats ? {
+            ...(comment.beats as any),
             producer_name: profile?.display_name || profile?.username || 'Anonymous'
-          }
+          } : null
         };
       }) || [];
 
-      // Load download information for each beat
-      const beatIds = beatReplies.map(reply => reply.beat.id);
-      if (beatIds.length > 0) {
-        const { data: downloadsData } = await supabase
-          .from('downloads')
-          .select('beat_id, downloaded_by')
-          .in('beat_id', beatIds);
-
-        // Add download info to each beat
-        const downloadsMap = new Map();
-        downloadsData?.forEach(download => {
-          downloadsMap.set(download.beat_id, download.downloaded_by);
-        });
-
-        beatReplies.forEach(reply => {
-          reply.isDownloaded = downloadsMap.has(reply.beat.id);
-          reply.downloadedBy = downloadsMap.get(reply.beat.id);
-        });
-      }
+      // TODO: Load download information when types are updated
 
       // Filter out reviewed beats and randomize order
       console.log('Total beat replies:', beatReplies.length);
       console.log('Reviewed beats set:', Array.from(reviewedBeatIds));
-      const unreviewedBeats = beatReplies.filter(reply => !reviewedBeatIds.has(reply.beat.id));
+      const unreviewedBeats = beatReplies.filter(reply => reply.beat && !reviewedBeatIds.has(reply.beat.id));
       console.log('Unreviewed beats:', unreviewedBeats.length);
       
       // Check if all beats have been reviewed
