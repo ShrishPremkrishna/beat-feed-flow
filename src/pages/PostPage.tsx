@@ -121,6 +121,16 @@ const PostPage = () => {
     navigate('/');
   };
 
+  const handleProfileUpdate = async (updatedProfile: any) => {
+    // Update the userProfile state with the fresh data from the database
+    setUserProfile(updatedProfile);
+    
+    // Also refresh the profile data to ensure everything is in sync
+    if (user) {
+      await fetchUserProfile(user.id);
+    }
+  };
+
   // Create navbar user object
   const navbarUser = userProfile ? {
     name: userProfile.display_name || 'User',

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Home, Heart, User, Settings, LogOut, Headphones, Music, Menu } from 'lucide-react';
+import { Search, Home, Heart, User, LogOut, Headphones, Music, Menu } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,8 @@ interface NavbarProps {
   onLogoClick?: () => void;
   onUserProfileClick?: (userId: string) => void;
   onUserSearch?: (query: string) => void;
-  onTabChange?: (tab: 'home' | 'following') => void;
-  activeTab?: 'home' | 'following';
   onLogout?: () => void;
-  onSettingsClick?: () => void;
+  onSignIn?: () => void;
   currentUser?: {
     user_id?: string;
     name: string;
@@ -28,10 +26,8 @@ export const Navbar = ({
   onLogoClick, 
   onLogout, 
   onUserSearch, 
-  onTabChange,
-  activeTab = 'home',
-  onSettingsClick,
   onUserProfileClick,
+  onSignIn,
   currentUser 
 }: NavbarProps) => {
 
@@ -110,7 +106,7 @@ export const Navbar = ({
     <>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             {/* Enhanced Logo inspired by reference */}
             <div className="flex items-center gap-3 group cursor-pointer" onClick={onLogoClick}>
               {/* Logo Icon - Headphones with Music Note */}
@@ -136,38 +132,11 @@ export const Navbar = ({
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex items-center gap-6 mx-8">
-              <Button
-                variant={activeTab === 'home' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onTabChange?.('home')}
-                className={`flex items-center gap-2 ${
-                  activeTab === 'home' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Home className="w-4 h-4" />
-                Home
-              </Button>
-              <Button
-                variant={activeTab === 'following' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onTabChange?.('following')}
-                className={`flex items-center gap-2 ${
-                  activeTab === 'following' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Heart className="w-4 h-4" />
-                Following
-              </Button>
-            </div>
+            {/* Spacer for centering */}
+            <div className="flex-1"></div>
 
             {/* Search Bar */}
-            <div className="flex-1 max-w-md mx-8 relative" ref={searchRef}>
+            <div className="flex-1 max-w-md relative" ref={searchRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
@@ -183,39 +152,45 @@ export const Navbar = ({
             </div>
 
             {/* User Profile */}
-            <div className="flex items-center gap-4">
-
-
-              {/* User Profile Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors"
-                  >
-                    <InitialsAvatar
-                      name={user.name}
-                      avatarUrl={user.avatar}
-                      size="sm"
-                    />
-                    <span className="font-medium hidden sm:block">{user.name}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => onUserProfileClick?.(user.user_id || '')} className="cursor-pointer">
-                    <User className="w-4 h-4 mr-2" />
-                    View Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onSettingsClick} className="cursor-pointer">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:text-destructive">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex items-center gap-4 flex-shrink-0">
+              {currentUser ? (
+                /* User Profile Dropdown */
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors"
+                    >
+                      <InitialsAvatar
+                        name={user.name}
+                        avatarUrl={user.avatar}
+                        size="sm"
+                      />
+                      <span className="font-medium hidden sm:block">{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => onUserProfileClick?.(user.user_id || '')} className="cursor-pointer">
+                      <User className="w-4 h-4 mr-2" />
+                      View Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                /* Sign In Button */
+                <Button
+                  onClick={onSignIn}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:block">Sign In</span>
+                </Button>
+              )}
 
               {/* Mobile Menu */}
               <Button variant="ghost" size="sm" className="md:hidden">

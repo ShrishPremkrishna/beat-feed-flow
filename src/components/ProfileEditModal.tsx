@@ -73,20 +73,20 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
       }
 
       setUploading(true);
-      console.log('Starting avatar upload...');
+
       
       const file = event.target.files?.[0];
       if (!file) {
-        console.log('No file selected');
+
         return;
       }
 
-      console.log('File selected:', file.name, file.type, file.size);
+      
 
       // Enhanced file validation using security utilities
       const validation = await validateImageFile(file, 5);
       if (!validation.isValid) {
-        console.log('File validation failed:', validation.errors);
+
         toast({
           title: "Invalid file",
           description: validation.errors.join(' '),
@@ -97,11 +97,11 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log('No authenticated user found');
+
         throw new Error('No authenticated user found');
       }
 
-      console.log('User authenticated:', user.id);
+      
 
       const fileExt = file.name.split('.').pop()?.toLowerCase();
       const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`;
@@ -343,15 +343,16 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
                 />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username" className="text-muted-foreground">Username</Label>
                 <Input
                   id="username"
                   value={formData.username}
-                  onChange={(e) => setFormData(prev => ({ ...prev, username: sanitizeText(e.target.value) }))}
+                  disabled
                   placeholder="@username"
                   maxLength={30}
-                  required
+                  className="bg-muted/50 text-muted-foreground cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground">Username cannot be changed</p>
             </div>
           </div>
 

@@ -16,9 +16,11 @@ interface PostComposerProps {
   placeholder?: string;
   isReply?: boolean;
   parentPostId?: string;
+  onSignIn?: () => void;
+  onPostDeleted?: () => void;
 }
 
-export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share a beat or ask for collaboration...", isReply = false, parentPostId }: PostComposerProps) => {
+export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share a beat or ask for collaboration...", isReply = false, parentPostId, onSignIn, onPostDeleted }: PostComposerProps) => {
   const [content, setContent] = useState('');
   const [beatFile, setBeatFile] = useState<File | null>(null);
   const [coverArt, setCoverArt] = useState<File | null>(null);
@@ -28,25 +30,36 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     title: '',
     bpm: '',
     key: '',
-    mood: '',
-    price: ''
+    purchaseLink: ''
   });
   const [showBeatUpload, setShowBeatUpload] = useState(false);
-  const [hasExistingBeat, setHasExistingBeat] = useState(false);
-  const [showProPlanModal, setShowProPlanModal] = useState(false);
+  const [todaysPostCount, setTodaysPostCount] = useState(0);
   const { toast } = useToast();
 
   // Load user profile data
   useEffect(() => {
     loadUserProfile();
+    if (!isReply) {
+      checkDailyPostLimit();
+    }
   }, []);
 
-  // Check if user has already submitted a beat to this post
+  // Listen for post deletion to reset daily limit
   useEffect(() => {
-    if (isReply && parentPostId) {
-      checkExistingBeatSubmission();
-    }
-  }, [isReply, parentPostId]);
+    // Create a custom event listener for post deletion
+    const handlePostDeleted = () => {
+      if (!isReply) {
+        resetDailyLimit();
+      }
+    };
+
+    // Listen for a custom event that will be dispatched when a post is deleted
+    window.addEventListener('postDeleted', handlePostDeleted);
+    
+    return () => {
+      window.removeEventListener('postDeleted', handlePostDeleted);
+    };
+  }, [isReply]);
 
   const loadUserProfile = async () => {
     try {
@@ -65,40 +78,44 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     }
   };
 
-  const checkExistingBeatSubmission = async () => {
-    if (!parentPostId) return;
-    
+  const checkDailyPostLimit = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Check if user has already submitted a beat reply to this post
-      const { data: existingBeat, error } = await supabase
-        .from('comments')
+      // Get today's date in user's timezone (midnight)
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Check if user has posted today
+      const { data: todaysPosts, error } = await supabase
+        .from('posts')
         .select('id')
         .eq('user_id', user.id)
-        .eq('post_id', parentPostId)
-        .not('beat_id', 'is', null)
-        .limit(1);
+        .gte('created_at', today.toISOString())
+        .lt('created_at', tomorrow.toISOString());
 
       if (error) {
-        console.error('Error checking existing beat submission:', error);
+        console.error('Error checking daily post limit:', error);
         return;
       }
 
-      setHasExistingBeat(existingBeat && existingBeat.length > 0);
+      setTodaysPostCount(todaysPosts ? todaysPosts.length : 0);
     } catch (error) {
-      console.error('Error checking existing beat submission:', error);
+      console.error('Error checking daily post limit:', error);
     }
   };
 
+  const resetDailyLimit = () => {
+    setTodaysPostCount(prev => Math.max(0, prev - 1));
+  };
+
+
+
   const handleFileUpload = (file: File, type: 'beat' | 'cover') => {
     if (type === 'beat') {
-      // Check if user already has a beat submission for this post
-      if (isReply && hasExistingBeat) {
-        setShowProPlanModal(true);
-        return;
-      }
       setBeatFile(file);
       setShowBeatUpload(true);
     } else {
@@ -133,11 +150,18 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        onSignIn?.();
+        return;
+      }
+
+      // Check daily post limit for regular posts (not replies)
+      if (!isReply && todaysPostCount >= 3) {
         toast({
-          title: "Authentication Required",
-          description: "Please sign in to create posts.",
+          title: "Daily Post Limit Reached",
+          description: "You can only post 3 times per day. This resets at midnight in your timezone.",
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
 
@@ -168,8 +192,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
             cover_art_url: coverArtUrl,
             bpm: beatMetadata.bpm ? parseInt(beatMetadata.bpm) : null,
             key: beatMetadata.key || null,
-            mood: beatMetadata.mood ? beatMetadata.mood.split(',').map(m => m.trim()).filter(Boolean) : [],
-            price: beatMetadata.price ? parseFloat(beatMetadata.price) : null,
+            purchase_link: beatMetadata.purchaseLink || null,
             user_id: user.id
           })
           .select()
@@ -199,6 +222,8 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
           .single();
 
         // Call onPost callback with the created comment
+        console.log('Created comment:', comment);
+        console.log('User profile:', userProfile);
         onPost({
           ...comment,
           author: {
@@ -250,8 +275,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
               cover_art_url: coverArtUrl,
               bpm: beatMetadata.bpm ? parseInt(beatMetadata.bpm) : null,
               key: beatMetadata.key || null,
-              mood: beatMetadata.mood ? beatMetadata.mood.split(',').map(m => m.trim()).filter(Boolean) : [],
-              price: beatMetadata.price ? parseFloat(beatMetadata.price) : null
+              purchase_link: beatMetadata.purchaseLink || null
             })
             .select()
             .single();
@@ -282,17 +306,29 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
           title: "Post Created!",
           description: beatFile ? "Your beat has been shared with the community!" : "Your post has been shared!",
         });
+
+        // Update daily limit status immediately after successful post
+        if (!isReply) {
+          setTodaysPostCount(prev => prev + 1);
+        }
       }
 
       // Reset form
       setContent('');
       setBeatFile(null);
       setCoverArt(null);
-      setBeatMetadata({ title: '', bpm: '', key: '', mood: '', price: '' });
+      setBeatMetadata({ title: '', bpm: '', key: '', purchaseLink: '' });
       setShowBeatUpload(false);
 
     } catch (error) {
       console.error('Error creating post/comment:', error);
+      console.error('Error details:', {
+        isReply,
+        parentPostId,
+        hasBeatFile: !!beatFile,
+        beatMetadata,
+        error: error
+      });
       toast({
         title: "Error",
         description: `Failed to ${isReply ? 'post reply' : 'create post'}. Please try again.`,
@@ -308,6 +344,17 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       className="beat-card space-y-4 animate-fade-in"
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Daily Limit Message */}
+      {!isReply && todaysPostCount > 0 && (
+        <div className="bg-muted/50 border border-border rounded-lg p-3 text-center">
+          <p className="text-sm text-muted-foreground">
+            {todaysPostCount >= 3 
+              ? "You've reached your daily limit of 3 posts. You can post again at midnight in your timezone."
+              : `You've posted ${todaysPostCount}/3 times today.`
+            }
+          </p>
+        </div>
+      )}
       <div className="flex items-start gap-3">
         <div className="relative">
           <InitialsAvatar
@@ -398,24 +445,13 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
               />
             </div>
 
-            <div>
-              <Label htmlFor="price">Price (optional)</Label>
-              <Input
-                id="price"
-                type="number"
-                value={beatMetadata.price}
-                onChange={(e) => setBeatMetadata(prev => ({ ...prev, price: e.target.value }))}
-                placeholder="50"
-              />
-            </div>
-
             <div className="md:col-span-2">
-              <Label htmlFor="mood">Mood Tags (comma separated)</Label>
+              <Label htmlFor="purchase-link">Purchase Link (optional)</Label>
               <Input
-                id="mood"
-                value={beatMetadata.mood}
-                onChange={(e) => setBeatMetadata(prev => ({ ...prev, mood: e.target.value }))}
-                placeholder="Dark, Trap, Energetic"
+                id="purchase-link"
+                value={beatMetadata.purchaseLink}
+                onChange={(e) => setBeatMetadata(prev => ({ ...prev, purchaseLink: e.target.value }))}
+                placeholder="https://beatstars.com/your-beat or https://t.me/yourchannel"
               />
             </div>
           </div>
@@ -441,67 +477,14 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
 
         <Button
           onClick={handlePost}
-          disabled={isReply ? !beatFile || isLoading : (!content.trim() || isLoading)}
+          disabled={isReply ? !beatFile || isLoading : (!content.trim() || isLoading || todaysPostCount >= 3)}
           className="btn-gradient"
         >
-          {isLoading ? 'Posting...' : (isReply ? 'Reply with Beat' : 'Post')}
+          {isLoading ? 'Posting...' : (isReply ? 'Reply with Beat' : todaysPostCount >= 3 ? `Daily Limit Reached (${todaysPostCount}/3)` : `Post (${todaysPostCount}/3)`)}
         </Button>
       </div>
 
-      {/* Pro Plan Upgrade Modal */}
-      <Dialog open={showProPlanModal} onOpenChange={setShowProPlanModal}>
-        <DialogContent className="sm:max-w-md bg-gradient-card border-border">
-          <DialogHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
-                <Music className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Upgrade to Pro
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              You've already submitted a beat to this post. Upgrade to Pro to submit multiple beats and unlock more features!
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="space-y-6">
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <h3 className="font-semibold text-foreground">Pro Features:</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Submit multiple beats per post</li>
-                <li>• Priority support</li>
-                <li>• Advanced analytics</li>
-                <li>• Enhanced profile customization</li>
-                <li>• Exclusive beat packs</li>
-              </ul>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowProPlanModal(false)}
-                className="flex-1"
-              >
-                Maybe Later
-              </Button>
-              <Button
-                onClick={() => {
-                  // TODO: Implement pro plan upgrade flow
-                  toast({
-                    title: "Coming Soon!",
-                    description: "Pro plan upgrade is being implemented.",
-                  });
-                  setShowProPlanModal(false);
-                }}
-                className="btn-gradient flex-1"
-              >
-                Upgrade Now
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

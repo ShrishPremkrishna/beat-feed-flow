@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
@@ -7,6 +7,7 @@ import { ShareModal } from './ShareModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatNumber } from '@/lib/utils';
+import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -25,32 +26,46 @@ interface PostDetailProps {
   postId: string;
   onBack: () => void;
   onUserProfileClick?: (userId: string) => void;
+  onSignIn?: () => void;
+  currentProfile?: any; // Add currentProfile prop for consistency
 }
 
-export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailProps) => {
+export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, currentProfile }: PostDetailProps) => {
   const [post, setPost] = useState<any>(null);
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [sortBy, setSortBy] = useState<'likes' | 'recent'>('likes');
+  const [sortBy, setSortBy] = useState<'likes' | 'recent' | 'my_likes'>('likes');
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const [downloadStatus, setDownloadStatus] = useState<{[key: string]: boolean}>({});
   const { toast } = useToast();
 
   useEffect(() => {
-    loadPostDetail();
     getCurrentUser();
-  }, [postId, sortBy]);
+  }, []);
+
+  useEffect(() => {
+    loadPostDetail();
+  }, [postId, currentUser]);
+
+  useEffect(() => {
+    if (post) {
+      loadReplies();
+    }
+  }, [postId, sortBy, post]);
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUser(user);
   };
 
-  const loadPostDetail = async () => {
+  const loadPostDetail = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
 
       // Load the main post
       const { data: postData, error: postError } = await supabase
@@ -68,12 +83,30 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
 
       if (postError) throw postError;
 
-      // Load post author profile
+      // Always load post author profile from database for consistency
       const { data: authorProfile } = await supabase
         .from('profiles')
         .select('display_name, username, avatar_url')
         .eq('user_id', postData.user_id)
         .single();
+
+      // Check if current user liked this post
+      let isLiked = false;
+      if (currentUser) {
+        try {
+          const { data: likeData } = await supabase
+            .from('likes')
+            .select('id')
+            .eq('user_id', currentUser.id)
+            .eq('post_id', postData.id)
+            .single();
+          
+          isLiked = !!likeData;
+        } catch (error) {
+          // If no like found, isLiked remains false
+          console.log('No like found for current user');
+        }
+      }
 
       // Transform post data
       const transformedPost = {
@@ -92,14 +125,45 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
         }),
         likes: postData.likes_count || 0,
         comments: postData.comments_count || 0,
-        isLiked: false // TODO: Check if current user liked this post
+        isLiked: isLiked
       };
 
       setPost(transformedPost);
+    } catch (error) {
+      console.error('Error loading post detail:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load post details',
+        variant: 'destructive'
+      });
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  };
 
+  const loadReplies = async () => {
+    if (!post) return;
+    
+    try {
       // Load replies/comments
-      const orderBy = sortBy === 'likes' ? 'likes_count' : 'created_at';
-      const ascending = sortBy === 'likes' ? false : true;
+      let orderBy = 'likes_count';
+      let ascending = false;
+      
+      switch (sortBy) {
+        case 'likes':
+          orderBy = 'likes_count';
+          ascending = false;
+          break;
+        case 'recent':
+          orderBy = 'created_at';
+          ascending = false;
+          break;
+        default:
+          orderBy = 'likes_count';
+          ascending = false;
+      }
       
       const { data: repliesData, error: repliesError } = await supabase
         .from('comments')
@@ -118,9 +182,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
             file_url,
             bpm,
             key,
-            mood,
-            price,
-            duration
+            purchase_link
           )
         `)
         .eq('post_id', postId)
@@ -143,6 +205,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
 
       // Check which replies the current user has liked
       let userLikes: string[] = [];
+      let userBeatReactions: { [beatId: string]: string } = {};
       
       // Always get fresh user data to avoid state issues
       const { data: { user: freshUser } } = await supabase.auth.getUser();
@@ -156,6 +219,26 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
           .not('comment_id', 'is', null);
         
         userLikes = likesData?.map(l => l.comment_id) || [];
+
+        // Also load beat reactions if this is the post owner
+        if (freshUser.id === post.user_id) {
+          const beatIds = repliesData
+            .filter(r => r.beats?.id)
+            .map(r => r.beats.id);
+          
+          if (beatIds.length > 0) {
+            const { data: reactionsData } = await supabase
+              .from('beat_reactions')
+              .select('beat_id, reaction')
+              .eq('user_id', freshUser.id)
+              .in('beat_id', beatIds);
+            
+            userBeatReactions = reactionsData?.reduce((acc, r) => {
+              acc[r.beat_id] = r.reaction;
+              return acc;
+            }, {} as { [beatId: string]: string }) || {};
+          }
+        }
       }
 
       // Transform replies data
@@ -163,6 +246,10 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
         const profile = profileMap.get(reply.user_id);
         return {
           ...reply,
+          beats: reply.beats ? {
+            ...reply.beats,
+            producer_name: profile?.display_name || profile?.username || 'Anonymous'
+          } : null,
           author: {
             name: profile?.display_name || profile?.username || 'Anonymous User',
             avatar: profile?.avatar_url || ''
@@ -176,20 +263,86 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
             hour12: true
           }),
           likes: reply.likes_count || 0,
-          isLiked: userLikes.includes(reply.id)
+          isLiked: userLikes.includes(reply.id),
+          beatReaction: reply.beats?.id ? userBeatReactions[reply.beats.id] : null
         };
       }) || [];
 
-      setReplies(transformedReplies);
+      // Apply custom sorting for "Most Liked" - show liked beats first, then disliked, then unreviewed
+      let finalReplies = transformedReplies;
+      if (sortBy === 'likes' && freshUser?.id === post.user_id) {
+        finalReplies.sort((a, b) => {
+          // First, sort by reaction status: liked > disliked > unreviewed
+          const getReactionPriority = (isLiked: boolean | null) => {
+            if (isLiked === true) return 3;
+            if (isLiked === false) return 2;
+            return 1; // unreviewed (null)
+          };
+          
+          const priorityA = getReactionPriority(a.isLiked);
+          const priorityB = getReactionPriority(b.isLiked);
+          
+          if (priorityA !== priorityB) {
+            return priorityB - priorityA; // Higher priority first
+          }
+          
+          // If same reaction status, sort by likes count (descending)
+          return (b.likes || 0) - (a.likes || 0);
+        });
+      } else if (sortBy === 'likes') {
+        // For non-post owners, sort by likes count (descending)
+        finalReplies.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+      }
+      
+      // Apply "My Likes" sorting - show all beats with liked ones at top, then disliked, then unreviewed
+      if (sortBy === 'my_likes' && freshUser?.id === post.user_id) {
+        finalReplies.sort((a, b) => {
+          // First, sort by reaction status: liked > disliked > unreviewed
+          const getReactionPriority = (isLiked: boolean | null) => {
+            if (isLiked === true) return 3;
+            if (isLiked === false) return 2;
+            return 1; // unreviewed (null)
+          };
+          
+          const priorityA = getReactionPriority(a.isLiked);
+          const priorityB = getReactionPriority(b.isLiked);
+          
+          if (priorityA !== priorityB) {
+            return priorityB - priorityA; // Higher priority first
+          }
+          
+          // If same reaction status, sort by likes count (descending)
+          return (b.likes || 0) - (a.likes || 0);
+        });
+      }
+
+      setReplies(finalReplies);
+
+      // Load download status for beats
+      if (transformedReplies.some(reply => reply.beats)) {
+        const beatIds = transformedReplies
+          .filter(reply => reply.beats)
+          .map(reply => reply.beats.id);
+        
+        const { data: downloadsData } = await (supabase as any)
+          .from('downloads')
+          .select('beat_id')
+          .in('beat_id', beatIds);
+        
+        const downloadMap: {[key: string]: boolean} = {};
+        downloadsData?.forEach((download: any) => {
+          downloadMap[download.beat_id] = true;
+        });
+        
+        setDownloadStatus(downloadMap);
+      }
     } catch (error) {
-      console.error('Error loading post detail:', error);
+      console.error('Error loading replies:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load post details',
+        description: 'Failed to load replies',
         variant: 'destructive'
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -245,17 +398,6 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
       return;
     }
 
-    // Optimistic update
-    setReplies(prev => prev.map(reply => 
-      reply.id === replyId 
-        ? { 
-            ...reply, 
-            isLiked: !isCurrentlyLiked, 
-            likes: isCurrentlyLiked ? reply.likes - 1 : reply.likes + 1 
-          }
-        : reply
-    ));
-
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
@@ -274,24 +416,128 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
           });
       }
       
-      // Small delay to ensure database consistency, then reload
-      setTimeout(async () => {
-        await loadPostDetail();
-      }, 100);
+      // Reload replies to get accurate like counts from database
+      await loadReplies();
 
     } catch (error) {
-      // Revert optimistic update on error
-      setReplies(prev => prev.map(reply => 
-        reply.id === replyId 
-          ? { 
-              ...reply, 
-              isLiked: isCurrentlyLiked, 
-              likes: isCurrentlyLiked ? reply.likes + 1 : reply.likes - 1 
-            }
-          : reply
-      ));
       
       console.error('Error toggling reply like:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to toggle like',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDownloadBeat = async (fileUrl: string, beatData: any, beatId: string) => {
+    try {
+      // Fetch the file as a blob
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch file');
+      }
+      
+      const blob = await response.blob();
+      
+      // Create filename with format: producersname-title_bpm_key
+      const producerName = beatData.producer_name || beatData.artist || 'unknown';
+      const title = beatData.title || 'untitled';
+      const bpm = beatData.bpm || '';
+      const key = beatData.key || '';
+      const fileName = `${producerName}-${title}_${bpm}_${key}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+      
+      // Create a blob URL
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
+
+      // Record the download in the database
+      if (currentUser && beatId) {
+        try {
+          await (supabase as any)
+            .from('downloads')
+            .upsert({
+              beat_id: beatId,
+              downloaded_by: currentUser.id
+            });
+          
+          // Update local state
+          setDownloadStatus(prev => ({
+            ...prev,
+            [beatId]: true
+          }));
+        } catch (downloadError) {
+          console.error('Error recording download:', downloadError);
+        }
+      }
+
+      toast({
+        title: 'Download Started',
+        description: 'Your beat is being downloaded.',
+      });
+    } catch (error) {
+      console.error('Error downloading beat:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Failed to download the beat. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handlePostLike = async () => {
+    console.log('handlePostLike called, currentUser:', currentUser, 'post:', post);
+    
+    if (!currentUser) {
+      onSignIn?.();
+      return;
+    }
+
+    const isCurrentlyLiked = post?.isLiked;
+    console.log('isCurrentlyLiked:', isCurrentlyLiked);
+
+    try {
+      if (isCurrentlyLiked) {
+        // Unlike the post
+        console.log('Deleting like for post:', postId);
+        const { error: deleteError } = await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('post_id', postId);
+        
+        if (deleteError) throw deleteError;
+        console.log('Like deleted successfully');
+      } else {
+        // Like the post
+        console.log('Inserting like for post:', postId);
+        const { error: insertError } = await supabase
+          .from('likes')
+          .insert({
+            user_id: currentUser.id,
+            post_id: postId
+          });
+        
+        if (insertError) throw insertError;
+        console.log('Like inserted successfully');
+      }
+      
+      // Reload post detail to get accurate like counts from database (without showing loading)
+      await loadPostDetail(false);
+    } catch (error) {
+      console.error('Error toggling post like:', error);
       toast({
         title: 'Error',
         description: 'Failed to toggle like',
@@ -367,19 +613,12 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
               }
             }}
           >
-            {post.author.avatar ? (
-              <img 
-                src={post.author.avatar}
-                alt={post.author.name}
-                className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-glow hover:border-primary/50 transition-colors"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-muted border-2 border-primary/30 shadow-glow hover:border-primary/50 transition-colors flex items-center justify-center">
-                <span className="text-lg font-bold text-muted-foreground">
-                  {post.author.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+            <InitialsAvatar
+              name={post.author?.name || 'User'}
+              avatarUrl={post.author?.avatar}
+              size="lg"
+              className="shadow-glow hover:border-primary/50 transition-colors"
+            />
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
@@ -426,16 +665,11 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  toast({
-                    title: 'Feature coming soon',
-                    description: 'Post liking will be implemented soon!'
-                  });
-                }}
+                onClick={handlePostLike}
                 className="flex items-center gap-2 text-muted-foreground hover:text-primary"
               >
-                <Heart className="w-4 h-4" />
-                                  <span>{formatNumber(post.likes)}</span>
+                <Heart className={`w-4 h-4 transition-all duration-300 ${post.isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+                <span>{formatNumber(post.likes)}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -455,6 +689,21 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
                 <Share className="w-4 h-4" />
                 <span>Share</span>
               </Button>
+              
+              {/* Review Beats Button (only for post owner) */}
+              {currentUser && currentUser.id === post.user_id && replies.length > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    // This will be handled by the parent component
+                    window.dispatchEvent(new CustomEvent('openBeatSwiper', { detail: { postId: post.id } }));
+                  }}
+                  className="flex items-center gap-2 text-primary hover:text-primary/80"
+                >
+                  Review Beats
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -467,6 +716,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
             isReply={true}
             parentPostId={postId}
             onPost={handleReply}
+            onSignIn={onSignIn}
           />
         </div>
       )}
@@ -478,7 +728,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
             Replies ({replies.length})
           </h3>
           {replies.length > 0 && (
-            <Select value={sortBy} onValueChange={(value: 'likes' | 'recent') => setSortBy(value)}>
+            <Select value={sortBy} onValueChange={(value: 'likes' | 'recent' | 'my_likes') => setSortBy(value)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
@@ -495,6 +745,14 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
                     Most Recent
                   </div>
                 </SelectItem>
+                {currentUser && currentUser.id === post.user_id && (
+                  <SelectItem value="my_likes">
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-4 h-4" />
+                      My Likes
+                    </div>
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
           )}
@@ -517,19 +775,12 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
                     }
                   }}
                 >
-                  {reply.author.avatar ? (
-                    <img 
-                      src={reply.author.avatar}
-                      alt={reply.author.name}
-                      className="w-10 h-10 rounded-full object-cover hover:border-2 hover:border-primary/30 transition-colors"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:border-2 hover:border-primary/30 transition-colors">
-                      <span className="text-sm font-bold text-muted-foreground">
-                        {reply.author.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
+                  <InitialsAvatar
+                    name={reply.author?.name || 'User'}
+                    avatarUrl={reply.author?.avatar}
+                    size="md"
+                    className="hover:border-primary/30 transition-colors"
+                  />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
@@ -570,14 +821,49 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
                      <p className="text-foreground text-sm mb-3">{reply.content}</p>
                    )}
                    {reply.beats && (
-                     <div className="bg-muted/30 rounded-lg border border-border overflow-hidden mb-3">
+                     <div className="bg-muted/30 rounded-lg border border-border overflow-hidden mb-3 relative">
+                       {/* Beat reaction indicator for post owner */}
+                       {currentUser && currentUser.id === post.user_id && reply.beatReaction && (
+                         <div className="absolute top-2 right-2 z-10">
+                           {reply.beatReaction === 'like' ? (
+                             <div className="bg-green-500 text-white rounded-full p-1">
+                               <Heart className="w-3 h-3 fill-current" />
+                             </div>
+                           ) : (
+                             <div className="bg-red-500 text-white rounded-full p-1">
+                               <X className="w-3 h-3" />
+                             </div>
+                           )}
+                         </div>
+                       )}
+                       
+                       {/* Downloaded indicator - only show to beat creator */}
+                       {currentUser && currentUser.id === reply.user_id && downloadStatus[reply.beats.id] && (
+                         <div className="absolute top-2 left-2 z-10">
+                           <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1">
+                             <Download className="w-3 h-3" />
+                             Downloaded by Artist
+                           </div>
+                         </div>
+                       )}
+
+                       {/* Liked indicator - only show to beat creator */}
+                       {currentUser && currentUser.id === post.user_id && reply.beatReaction === 'like' && (
+                         <div className="absolute top-2 right-2 z-10">
+                           <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1">
+                             <Heart className="w-3 h-3 fill-current" />
+                             Liked by Artist
+                           </div>
+                         </div>
+                       )}
+
                        <BeatPlayer
                          audioUrl={reply.beats.file_url || ''}
                          title={reply.beats.title || 'Untitled Beat'}
                          artist={reply.beats.artist || reply.author.name}
                          bpm={reply.beats.bpm || undefined}
-                         key={reply.beats.key || undefined}
-                         mood={reply.beats.mood || undefined}
+                         beatKey={reply.beats.key || undefined}
+                         purchaseLink={reply.beats.purchase_link || undefined}
                          className="p-3"
                        />
                      </div>
@@ -598,8 +884,21 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick }: PostDetailPro
                        <Heart className={`w-3 h-3 transition-all duration-300 ${
                          reply.isLiked ? 'fill-current scale-110' : ''
                        }`} />
-                                                     <span className="text-xs font-medium">{formatNumber(reply.likes)}</span>
+                       <span className="text-xs font-medium">{formatNumber(reply.likes)}</span>
                      </Button>
+                     
+                     {/* Download button - only show for post creator (artist) */}
+                     {currentUser && currentUser.id === post.user_id && reply.beats && (
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                                                       onClick={() => handleDownloadBeat(reply.beats.file_url, reply.beats, reply.beats.id)}
+                         className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-all duration-300"
+                       >
+                         <Download className="w-3 h-3" />
+                         <span className="text-xs font-medium">Download</span>
+                       </Button>
+                     )}
                    </div>
                 </div>
               </div>

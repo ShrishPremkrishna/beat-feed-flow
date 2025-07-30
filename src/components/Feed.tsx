@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PostComposer } from './PostComposer';
 import { UserPost } from './UserPost';
 import { ShareModal } from './ShareModal';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -10,74 +11,70 @@ interface FeedProps {
   onPostDetailView?: (postId: string) => void;
   onUserProfileClick?: (userId: string) => void;
   activeTab?: 'home' | 'following';
+  onTabChange?: (tab: 'home' | 'following') => void;
+  onSignIn?: () => void;
 }
 
-export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, activeTab = 'home' }: FeedProps) => {
+export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, activeTab = 'home', onTabChange, onSignIn }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('Tab changed to:', activeTab);
+    checkAuthStatus();
     loadPosts();
   }, [activeTab]); // Reload posts when tab changes
 
+  const checkAuthStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const authenticated = !!user;
+    console.log('Auth status check:', authenticated);
+    setIsAuthenticated(authenticated);
+  };
+
   const loadPosts = async () => {
+    console.log('loadPosts called with activeTab:', activeTab);
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
       let postsData;
       
-      if (activeTab === 'following' && currentUser) {
-        // Load posts from followed users + discover content
-        
-        // First, get users that current user follows
-        const { data: followsData } = await supabase
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', currentUser.id);
-        
-        const followingIds = followsData?.map(follow => follow.following_id) || [];
-        
-        if (followingIds.length > 0) {
-          // Load posts from followed users
-          const { data: followedPosts, error: followedError } = await supabase
-            .from('posts')
-            .select('*')
-            .in('user_id', followingIds)
-            .order('created_at', { ascending: false })
-            .limit(20);
-          
-          if (followedError) throw followedError;
-          
-          // Also load some discover content (posts from users not followed)
-          const { data: discoverPosts, error: discoverError } = await supabase
-            .from('posts')
-            .select('*')
-            .not('user_id', 'in', `(${followingIds.join(',')})`)
-            .not('user_id', 'eq', currentUser.id) // Don't include current user's posts
-            .order('likes_count', { ascending: false }) // Show popular posts
-            .limit(10);
-          
-          if (discoverError) throw discoverError;
-          
-          // Combine and sort by created_at
-          postsData = [...(followedPosts || []), ...(discoverPosts || [])]
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      if (activeTab === 'following') {
+        if (!currentUser) {
+          // If not authenticated and on following tab, show empty state
+          postsData = [];
         } else {
-          // If user doesn't follow anyone, show discover content
-          const { data: allPosts, error: allError } = await supabase
-            .from('posts')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(30);
+          // Load posts from ONLY followed users
           
-          if (allError) throw allError;
-          postsData = allPosts;
+          // First, get users that current user follows
+          const { data: followsData } = await supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', currentUser.id);
+          
+          const followingIds = followsData?.map(follow => follow.following_id) || [];
+          
+          if (followingIds.length > 0) {
+            // Load posts from ONLY followed users
+            const { data: followedPosts, error: followedError } = await supabase
+              .from('posts')
+              .select('*')
+              .in('user_id', followingIds)
+              .order('created_at', { ascending: false });
+            
+            if (followedError) throw followedError;
+            postsData = followedPosts || [];
+          } else {
+            // If user doesn't follow anyone, show empty feed
+            postsData = [];
+          }
         }
       } else {
-        // Load all posts for Home tab (original behavior)
+        // Load all posts for Discover tab
         const { data: allPosts, error: postsError } = await supabase
           .from('posts')
           .select('*')
@@ -90,13 +87,17 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
       // Get unique user IDs from posts
       const postUserIds = postsData?.map(post => post.user_id) || [];
 
-      // Load profiles for these users
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, username, avatar_url')
-        .in('user_id', postUserIds);
+      // Load profiles for these users (only if there are posts)
+      let profilesData = null;
+      if (postUserIds.length > 0) {
+        const { data, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, username, avatar_url')
+          .in('user_id', postUserIds);
 
-      if (profilesError) throw profilesError;
+        if (profilesError) throw profilesError;
+        profilesData = data;
+      }
 
       // Check which posts the current user has liked
       let userLikes: string[] = [];
@@ -116,9 +117,11 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
 
       // Create a map of user_id to profile for quick lookup
       const profileMap = new Map();
-      profilesData?.forEach(profile => {
-        profileMap.set(profile.user_id, profile);
-      });
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          profileMap.set(profile.user_id, profile);
+        });
+      }
 
       // Transform posts data - ensure proper ordering (newest first)
       const transformedPosts = postsData
@@ -146,6 +149,7 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
       }) || [];
 
       // Set the transformed posts
+      console.log('Setting posts:', transformedPosts.length, 'activeTab:', activeTab, 'isAuthenticated:', isAuthenticated);
       setPosts(transformedPosts);
 
     } catch (error) {
@@ -181,23 +185,12 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
   const handleLike = async (postId: string) => {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) {
-      toast({
-        title: 'Please log in',
-        description: 'You need to be logged in to like posts',
-        variant: 'destructive'
-      });
+      onSignIn?.();
       return;
     }
 
     const post = posts.find(p => p.id === postId);
     const isCurrentlyLiked = post?.isLiked;
-
-    // Optimistic update
-    setPosts(prev => prev.map(p => 
-      p.id === postId 
-        ? { ...p, isLiked: !isCurrentlyLiked, likes: isCurrentlyLiked ? p.likes - 1 : p.likes + 1 }
-        : p
-    ));
 
     try {
       if (isCurrentlyLiked) {
@@ -221,18 +214,9 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
         if (insertError) throw insertError;
       }
       
-      // Reload posts to ensure state is synchronized with database
-      setTimeout(() => {
-        loadPosts();
-      }, 100);
+      // Reload posts to get accurate like counts from database
+      await loadPosts();
     } catch (error) {
-      // Revert optimistic update on error
-      setPosts(prev => prev.map(p => 
-        p.id === postId 
-          ? { ...p, isLiked: isCurrentlyLiked, likes: isCurrentlyLiked ? p.likes + 1 : p.likes - 1 }
-          : p
-      ));
-      
       console.error('Error toggling like:', error);
       toast({
         title: 'Error',
@@ -251,19 +235,69 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* X-Style Navigation */}
+      <div className="sticky top-0 z-30 bg-gradient-hero/80 backdrop-blur-xl border-b border-border">
+        <div className="flex justify-center py-3">
+          <div className="flex items-center space-x-8">
+            <button
+              onClick={() => onTabChange?.('home')}
+              className={`text-lg font-semibold transition-colors duration-200 ${
+                activeTab === 'home'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Discover
+            </button>
+            <button
+              onClick={() => onTabChange?.('following')}
+              className={`text-lg font-semibold transition-colors duration-200 ${
+                activeTab === 'following'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Following
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Post Composer */}
-      <PostComposer onPost={handleNewPost} />
+      <PostComposer onPost={handleNewPost} onSignIn={onSignIn} />
 
       {/* Feed Content */}
       <div className="space-y-6">
-        {posts.length === 0 && !loading ? (
+        {console.log('Rendering feed - posts:', posts.length, 'loading:', loading, 'activeTab:', activeTab, 'isAuthenticated:', isAuthenticated)}
+        {loading ? (
+          <div className="beat-card text-center py-12">
+            <div className="text-muted-foreground text-lg mb-2">Loading...</div>
+          </div>
+        ) : posts.length === 0 ? (
           <div className="beat-card text-center py-12">
             {activeTab === 'following' ? (
               <>
-                <div className="text-muted-foreground text-lg mb-2">No posts from followed users</div>
-                <div className="text-muted-foreground text-sm">
-                  Start following some artists to see their posts here, or switch to Home to discover new content!
-                </div>
+                {isAuthenticated ? (
+                  <>
+                    <div className="text-muted-foreground text-lg mb-2">No posts from followed users</div>
+                    <div className="text-muted-foreground text-sm">
+                      Start following some artists to see their posts here, or switch to Home to discover new content!
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-muted-foreground text-lg mb-2">Sign in to follow users</div>
+                    <div className="text-muted-foreground text-sm">
+                      Create an account to follow your favorite artists and see their posts here!
+                    </div>
+                    <Button 
+                      onClick={onSignIn}
+                      className="mt-4 btn-gradient"
+                    >
+                      Sign In
+                    </Button>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -288,16 +322,14 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
                 onPostClick={() => onPostDetailView?.(post.id)}
                 onDelete={() => loadPosts()} // Reload posts when one is deleted
                 onUserProfileClick={onUserProfileClick}
+                onSignIn={onSignIn}
               />
             </div>
           ))
         )}
       </div>
 
-      {/* Load More */}
-      <div className="flex justify-center py-8">
-        <div className="text-muted-foreground animate-pulse">Loading more content...</div>
-      </div>
+
 
       {/* Share Modal */}
       <ShareModal
