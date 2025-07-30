@@ -6,65 +6,65 @@
 
 @layer base {
   :root {
-    /* Outside Lands Festival Theme */
-    --background: 54 42% 89%;    /* Cream Sand Background */
-    --foreground: 53 90% 65%;    /* Bright Yellow Text */
+    /* Outside Lands Bright Pastel Theme */
+    --background: 54 42% 89%;    /* Light Cream */
+    --foreground: 170 51% 13%;   /* Dark Green */
 
-    --card: 156 60% 35%;
-    --card-foreground: 53 90% 65%;
+    --card: 54 42% 89%;
+    --card-foreground: 170 51% 13%;
 
-    --popover: 156 60% 35%;
-    --popover-foreground: 53 90% 65%;
+    --popover: 54 42% 89%;
+    --popover-foreground: 170 51% 13%;
 
-    /* Bright Yellow primary system */
-    --primary: 53 90% 65%;       /* Festival Yellow */
-    --primary-foreground: 156 76% 25%;
-    --primary-glow: 53 95% 75%;
-    --primary-deep: 53 80% 55%;
+    /* Yellow accent primary system */
+    --primary: 55 93% 65%;       /* Yellow Accent */
+    --primary-foreground: 170 51% 13%;
+    --primary-glow: 55 93% 75%;
+    --primary-deep: 55 85% 55%;
 
     /* Green secondary tones */
-    --secondary: 156 60% 35%;
-    --secondary-foreground: 53 90% 65%;
+    --secondary: 158 59% 46%;    /* Green Accent */
+    --secondary-foreground: 54 42% 89%;
 
-    --muted: 156 45% 30%;
-    --muted-foreground: 53 70% 85%;
+    --muted: 54 30% 85%;
+    --muted-foreground: 170 40% 25%;
 
-    /* Coral Pink accent colors */
-    --accent: 4 75% 70%;         /* Coral Pink */
-    --accent-foreground: 156 76% 25%;
-    --accent-secondary: 156 95% 55%;  /* Electric Green */
+    /* Pink accent colors */
+    --accent: 320 82% 76%;       /* Pink Accent */
+    --accent-foreground: 170 51% 13%;
+    --accent-secondary: 215 89% 53%;  /* Blue Accent */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 54 42% 89%;
 
-    --border: 156 50% 30%;
-    --input: 156 55% 32%;
-    --ring: 53 90% 65%;
+    --border: 170 30% 40%;
+    --input: 54 42% 89%;
+    --ring: 55 93% 65%;
 
     --radius: 1rem;
 
-    /* Enhanced music-specific colors */
-    --beat-card: 156 50% 32%;
-    --beat-hover: 156 55% 35%;
-    --ai-highlight: 4 75% 70%;    /* Coral Pink */
-    --success: 156 76% 42%;       /* Festival Green */
-    --warning: 53 95% 75%;
+    /* Enhanced music-specific colors using pastels */
+    --beat-card: 54 42% 89%;      /* Light Cream */
+    --beat-hover: 320 82% 76%;    /* Pink Accent */
+    --ai-highlight: 215 89% 53%;  /* Blue Accent */
+    --success: 158 59% 46%;       /* Green Accent */
+    --warning: 55 93% 65%;        /* Yellow Accent */
 
-    /* Beautiful gradient collection with Outside Lands palette */
-    --gradient-primary: linear-gradient(135deg, hsl(53 90% 65%) 0%, hsl(53 95% 75%) 50%, hsl(4 75% 70%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(156 60% 35%) 0%, hsl(156 55% 38%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(4 75% 70%) 0%, hsl(53 95% 75%) 50%, hsl(156 95% 55%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(156 60% 35%) 0%, hsl(156 55% 38%) 100%);
-    --gradient-ai: linear-gradient(135deg, hsl(4 75% 70%) 0%, hsl(53 95% 75%) 50%, hsl(156 95% 55%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(156 76% 42%) 0%, hsl(53 90% 65% / 0.1) 50%, hsl(4 75% 70% / 0.1) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(156 60% 35%) 0%, hsl(156 55% 38%) 100%);
+    /* Solid pastel colors - no gradients */
+    --gradient-primary: hsl(55 93% 65%);
+    --gradient-secondary: hsl(158 59% 46%);
+    --gradient-accent: hsl(320 82% 76%);
+    --gradient-card: hsl(54 42% 89%);
+    --gradient-ai: hsl(215 89% 53%);
+    --gradient-hero: hsl(54 42% 89%);
+    --gradient-subtle: hsl(54 40% 87%);
 
-    /* Enhanced shadows with festival glow */
-    --shadow-glow: 0 0 40px hsl(53 90% 65% / 0.4), 0 0 80px hsl(4 75% 70% / 0.2);
-    --shadow-beat: 0 8px 32px hsl(156 76% 25% / 0.6), 0 4px 16px hsl(53 90% 65% / 0.1);
-    --shadow-ai: 0 0 30px hsl(4 75% 70% / 0.5), 0 8px 32px hsl(156 76% 25% / 0.4);
-    --shadow-card: 0 4px 20px hsl(156 76% 25% / 0.4), 0 2px 8px hsl(53 90% 65% / 0.05);
-    --shadow-intense: 0 0 60px hsl(53 90% 65% / 0.6), 0 0 120px hsl(4 75% 70% / 0.3);
+    /* Soft pastel shadows */
+    --shadow-glow: 0 0 20px hsl(55 93% 65% / 0.3), 0 4px 12px hsl(170 51% 13% / 0.1);
+    --shadow-beat: 0 4px 16px hsl(170 51% 13% / 0.1), 0 2px 8px hsl(320 82% 76% / 0.2);
+    --shadow-ai: 0 0 15px hsl(215 89% 53% / 0.3), 0 4px 12px hsl(170 51% 13% / 0.1);
+    --shadow-card: 0 2px 8px hsl(170 51% 13% / 0.1), 0 1px 4px hsl(170 30% 40% / 0.05);
+    --shadow-intense: 0 0 30px hsl(55 93% 65% / 0.4), 0 8px 24px hsl(170 51% 13% / 0.15);
 
     /* Smooth transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
