@@ -6,65 +6,65 @@
 
 @layer base {
   :root {
-    /* Enhanced dark music-focused theme */
-    --background: 222 20% 7%;
-    --foreground: 0 0% 97%;
+    /* New evergreen-inspired theme */
+    --background: 170 51% 13%;  /* Dark Evergreen */
+    --foreground: 54 42% 89%;   /* Cream Sand */
 
-    --card: 222 18% 11%;
-    --card-foreground: 0 0% 96%;
+    --card: 170 45% 16%;
+    --card-foreground: 54 42% 89%;
 
-    --popover: 222 18% 11%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 170 45% 16%;
+    --popover-foreground: 54 42% 89%;
 
-    /* Enhanced purple gradient system */
-    --primary: 270 85% 65%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 270 100% 80%;
-    --primary-deep: 270 70% 45%;
+    /* Mint Green primary system */
+    --primary: 158 60% 46%;      /* Mint Green */
+    --primary-foreground: 170 51% 13%;
+    --primary-glow: 158 70% 60%;
+    --primary-deep: 158 50% 35%;
 
     /* Sophisticated secondary tones */
-    --secondary: 222 15% 16%;
-    --secondary-foreground: 0 0% 92%;
+    --secondary: 170 40% 20%;
+    --secondary-foreground: 54 42% 89%;
 
-    --muted: 222 15% 14%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 170 35% 18%;
+    --muted-foreground: 54 30% 70%;
 
-    /* Enhanced accent colors */
-    --accent: 200 100% 65%;
-    --accent-foreground: 0 0% 100%;
-    --accent-secondary: 320 85% 70%;
+    /* Blush Pink accent colors */
+    --accent: 359 91% 85%;       /* Blush Pink */
+    --accent-foreground: 170 51% 13%;
+    --accent-secondary: 214 89% 53%;  /* Electric Blue */
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 54 42% 89%;
 
-    --border: 222 15% 18%;
-    --input: 222 15% 16%;
-    --ring: 270 85% 65%;
+    --border: 170 35% 25%;
+    --input: 170 40% 20%;
+    --ring: 158 60% 46%;
 
     --radius: 1rem;
 
     /* Enhanced music-specific colors */
-    --beat-card: 222 16% 13%;
-    --beat-hover: 222 16% 16%;
-    --ai-highlight: 285 100% 75%;
-    --success: 120 70% 55%;
+    --beat-card: 170 45% 18%;
+    --beat-hover: 170 45% 22%;
+    --ai-highlight: 214 89% 53%;  /* Electric Blue */
+    --success: 158 60% 46%;       /* Mint Green */
     --warning: 45 100% 65%;
 
-    /* Beautiful gradient collection */
-    --gradient-primary: linear-gradient(135deg, hsl(270 85% 65%) 0%, hsl(270 100% 80%) 50%, hsl(285 100% 75%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(222 16% 13%) 0%, hsl(222 18% 16%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(200 100% 65%) 0%, hsl(285 100% 75%) 50%, hsl(320 85% 70%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(222 18% 11%) 0%, hsl(222 16% 14%) 100%);
-    --gradient-ai: linear-gradient(135deg, hsl(285 100% 75%) 0%, hsl(200 100% 65%) 50%, hsl(270 100% 80%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(222 20% 7%) 0%, hsl(270 85% 65% / 0.1) 50%, hsl(285 100% 75% / 0.1) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(222 18% 11%) 0%, hsl(222 16% 13%) 100%);
+    /* Beautiful gradient collection with new palette */
+    --gradient-primary: linear-gradient(135deg, hsl(158 60% 46%) 0%, hsl(158 70% 60%) 50%, hsl(359 91% 85%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(170 45% 16%) 0%, hsl(170 45% 20%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(214 89% 53%) 0%, hsl(359 91% 85%) 50%, hsl(158 70% 60%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(170 45% 16%) 0%, hsl(170 40% 18%) 100%);
+    --gradient-ai: linear-gradient(135deg, hsl(214 89% 53%) 0%, hsl(158 70% 60%) 50%, hsl(359 91% 85%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(170 51% 13%) 0%, hsl(158 60% 46% / 0.1) 50%, hsl(359 91% 85% / 0.1) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(170 45% 16%) 0%, hsl(170 45% 18%) 100%);
 
-    /* Enhanced shadows with purple glow */
-    --shadow-glow: 0 0 40px hsl(270 85% 65% / 0.4), 0 0 80px hsl(285 100% 75% / 0.2);
-    --shadow-beat: 0 8px 32px hsl(222 20% 5% / 0.6), 0 4px 16px hsl(270 85% 65% / 0.1);
-    --shadow-ai: 0 0 30px hsl(285 100% 75% / 0.5), 0 8px 32px hsl(222 20% 5% / 0.4);
-    --shadow-card: 0 4px 20px hsl(222 20% 5% / 0.4), 0 2px 8px hsl(270 85% 65% / 0.05);
-    --shadow-intense: 0 0 60px hsl(270 85% 65% / 0.6), 0 0 120px hsl(285 100% 75% / 0.3);
+    /* Enhanced shadows with mint green glow */
+    --shadow-glow: 0 0 40px hsl(158 60% 46% / 0.4), 0 0 80px hsl(214 89% 53% / 0.2);
+    --shadow-beat: 0 8px 32px hsl(170 51% 8% / 0.6), 0 4px 16px hsl(158 60% 46% / 0.1);
+    --shadow-ai: 0 0 30px hsl(214 89% 53% / 0.5), 0 8px 32px hsl(170 51% 8% / 0.4);
+    --shadow-card: 0 4px 20px hsl(170 51% 8% / 0.4), 0 2px 8px hsl(158 60% 46% / 0.05);
+    --shadow-intense: 0 0 60px hsl(158 60% 46% / 0.6), 0 0 120px hsl(214 89% 53% / 0.3);
 
     /* Smooth transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
