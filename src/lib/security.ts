@@ -126,10 +126,14 @@ export const validateAudioFile = (file: File, maxSizeMB: number = 200): FileVali
     'audio/flac', // FLAC
     'audio/m4a',  // M4A
     'audio/aac',  // AAC
+    'audio/ogg',  // OGG
+    'audio/webm', // WebM
+    'audio/x-wav', // Alternative WAV MIME type
+    'audio/x-flac', // Alternative FLAC MIME type
   ];
   
   if (!allowedTypes.includes(file.type)) {
-    errors.push('Invalid file type. Only MP3, WAV, FLAC, M4A, and AAC files are allowed.');
+    errors.push('Invalid file type. Only MP3, WAV, FLAC, M4A, AAC, OGG, and WebM files are allowed. Large files will be automatically compressed.');
   }
   
   // Check file size

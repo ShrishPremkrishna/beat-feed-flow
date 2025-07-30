@@ -60,14 +60,7 @@ export const Navbar = ({
     }
   }, [showSearchResults]);
 
-  const defaultUser = {
-    user_id: '',
-    name: 'Current User',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
-    notifications: 3
-  };
-
-  const user = currentUser || defaultUser;
+  const user = currentUser;
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -141,7 +134,7 @@ export const Navbar = ({
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
                   type="text"
-                  placeholder="Search artists..."
+                  placeholder="Search artists or producers..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
@@ -153,7 +146,7 @@ export const Navbar = ({
 
             {/* User Profile */}
             <div className="flex items-center gap-4 flex-shrink-0">
-              {currentUser ? (
+              {user ? (
                 /* User Profile Dropdown */
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

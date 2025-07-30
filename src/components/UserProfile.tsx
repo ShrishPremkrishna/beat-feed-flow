@@ -68,6 +68,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
   const [showDownloadsModal, setShowDownloadsModal] = useState(false);
   const [userDownloads, setUserDownloads] = useState<any[]>([]);
   const [loadingDownloads, setLoadingDownloads] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<{[key: string]: boolean}>({});
   const { toast } = useToast();
 
 
@@ -185,11 +186,35 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
  
         console.log('User profile:', userProfile);
  
+
+
         // Transform replies to include like state
-      const transformedReplies = replies?.map(reply => ({
-        ...reply,
-        isLiked: userLikes.includes(reply.id)
-      })) || [];
+        const transformedReplies = replies?.map(reply => ({
+          ...reply,
+          isLiked: userLikes.includes(reply.id),
+          beatReaction: null
+        })) || [];
+
+      // Load download status for beats (only for own profile)
+      if (isOwnProfile && transformedReplies.length > 0) {
+        const beatIds = transformedReplies
+          .filter(reply => reply.beats?.id)
+          .map(reply => reply.beats.id);
+        
+        if (beatIds.length > 0) {
+          const { data: downloadsData } = await supabase
+            .from('downloads')
+            .select('beat_id')
+            .in('beat_id', beatIds);
+          
+          const downloadMap: {[key: string]: boolean} = {};
+          downloadsData?.forEach((download: any) => {
+            downloadMap[download.beat_id] = true;
+          });
+          
+          setDownloadStatus(downloadMap);
+        }
+      }
 
       setUserPosts(posts || []);
       setUserReplies(transformedReplies);
@@ -982,9 +1007,20 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                     )}
                     {reply.beats && (
                       <div 
-                        className="bg-muted/30 rounded-lg border border-border overflow-hidden"
+                        className="bg-muted/30 rounded-lg border border-border overflow-hidden relative"
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {/* Downloaded indicator - only show to beat creator */}
+                        {isOwnProfile && downloadStatus[reply.beats.id] && (
+                          <div className="absolute top-2 left-2 z-10">
+                            <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1">
+                              <Download className="w-3 h-3" />
+                              Downloaded by Artist
+                            </div>
+                          </div>
+                        )}
+
+
                         <BeatPlayer
                           audioUrl={reply.beats.file_url || ''}
                           title={reply.beats.title || 'Untitled Beat'}
@@ -1077,15 +1113,17 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                       
                       {download.beats && (
                         <div className="bg-muted/30 rounded-lg border border-border overflow-hidden">
-                          <BeatPlayer
-                            audioUrl={download.beats.file_url || ''}
-                            title={download.beats.title || 'Untitled Beat'}
-                            artist={download.beats.artist || 'Anonymous'}
-                            bpm={download.beats.bpm || undefined}
-                            beatKey={download.beats.key || undefined}
-                            purchaseLink={download.beats.purchase_link || undefined}
-                            className="p-4"
-                          />
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <BeatPlayer
+                              audioUrl={download.beats.file_url || ''}
+                              title={download.beats.title || 'Untitled Beat'}
+                              artist={download.beats.artist || 'Anonymous'}
+                              bpm={download.beats.bpm || undefined}
+                              beatKey={download.beats.key || undefined}
+                              purchaseLink={download.beats.purchase_link || undefined}
+                              className="p-4"
+                            />
+                          </div>
                           
                           {/* Download Button */}
                           <div className="p-4 border-t border-border/30">

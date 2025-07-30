@@ -204,7 +204,6 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
 
       // Check which replies the current user has liked
       let userLikes: string[] = [];
-      let userBeatReactions: { [beatId: string]: string } = {};
       
       // Always get fresh user data to avoid state issues
       const { data: { user: freshUser } } = await supabase.auth.getUser();
@@ -219,11 +218,11 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
         
         userLikes = likesData?.map(l => l.comment_id) || [];
 
-        // Also load beat reactions if this is the post owner
+        // Load beat reactions for the current user (artist) to show their reactions
         if (freshUser.id === post.user_id) {
           const beatIds = repliesData
             .filter(r => r.beats?.id)
-            .map(r => r.beats!.id);
+            .map(r => r.beats.id);
           
           if (beatIds.length > 0) {
             const { data: reactionsData } = await supabase
@@ -232,10 +231,18 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
               .eq('user_id', freshUser.id)
               .in('beat_id', beatIds);
             
-            userBeatReactions = reactionsData?.reduce((acc, r) => {
-              acc[r.beat_id] = r.reaction;
-              return acc;
-            }, {} as { [beatId: string]: string }) || {};
+            // Store reactions for display
+            const reactionMap: { [beatId: string]: string } = {};
+            reactionsData?.forEach(reaction => {
+              reactionMap[reaction.beat_id] = reaction.reaction;
+            });
+            
+            // Update the replies data with reaction data
+            repliesData.forEach((reply, index) => {
+              if (reply.beats?.id && reactionMap[reply.beats.id]) {
+                reply.beatReaction = reactionMap[reply.beats.id];
+              }
+            });
           }
         }
       }
@@ -263,7 +270,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
           }),
           likes: reply.likes_count || 0,
           isLiked: userLikes.includes(reply.id),
-          beatReaction: reply.beats?.id ? userBeatReactions[reply.beats.id] : null
+          beatReaction: reply.beatReaction || null
         };
       }) || [];
 
@@ -317,7 +324,26 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
 
       setReplies(finalReplies);
 
-      // TODO: Load download status when types are updated
+      // Load download status for beats (for all beat creators)
+      if (finalReplies.length > 0) {
+        const beatIds = finalReplies
+          .filter(reply => reply.beats?.id)
+          .map(reply => reply.beats.id);
+        
+        if (beatIds.length > 0) {
+          const { data: downloadsData } = await supabase
+            .from('downloads')
+            .select('beat_id')
+            .in('beat_id', beatIds);
+          
+          const downloadMap: {[key: string]: boolean} = {};
+          downloadsData?.forEach((download: any) => {
+            downloadMap[download.beat_id] = true;
+          });
+          
+          setDownloadStatus(downloadMap);
+        }
+      }
     } catch (error) {
       console.error('Error loading replies:', error);
       toast({
@@ -372,11 +398,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
 
   const handleReplyLike = async (replyId: string, isCurrentlyLiked: boolean) => {
     if (!currentUser) {
-      toast({
-        title: 'Please log in',
-        description: 'You need to be logged in to like replies',
-        variant: 'destructive'
-      });
+      onSignIn?.();
       return;
     }
 
@@ -811,25 +833,19 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
                          </div>
                        )}
 
-                       {/* Liked indicator - only show to beat creator */}
-                       {currentUser && currentUser.id === post.user_id && reply.beatReaction === 'like' && (
-                         <div className="absolute top-2 right-2 z-10">
-                           <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1">
-                             <Heart className="w-3 h-3 fill-current" />
-                             Liked by Artist
-                           </div>
-                         </div>
-                       )}
 
-                       <BeatPlayer
-                         audioUrl={reply.beats.file_url || ''}
-                         title={reply.beats.title || 'Untitled Beat'}
-                         artist={reply.beats.artist || reply.author.name}
-                         bpm={reply.beats.bpm || undefined}
-                         beatKey={reply.beats.key || undefined}
-                         purchaseLink={undefined}
-                         className="p-3"
-                       />
+
+                       <div onClick={(e) => e.stopPropagation()}>
+                         <BeatPlayer
+                           audioUrl={reply.beats.file_url || ''}
+                           title={reply.beats.title || 'Untitled Beat'}
+                           artist={reply.beats.artist || reply.author.name}
+                           bpm={reply.beats.bpm || undefined}
+                           beatKey={reply.beats.key || undefined}
+                           purchaseLink={undefined}
+                           className="p-3"
+                         />
+                       </div>
                      </div>
                    )}
                    

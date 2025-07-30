@@ -375,7 +375,7 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-hero">
       <div className="navbar">
         <Navbar 
-          currentUser={user ? navbarUser : null}
+          currentUser={navbarUser}
           onUserProfileClick={handleUserSelect}
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}

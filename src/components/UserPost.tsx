@@ -52,8 +52,6 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sortBy, setSortBy] = useState<'likes' | 'recent' | 'my_likes'>('likes');
   const [downloadStatus, setDownloadStatus] = useState<{[key: string]: boolean}>({});
-  const [userBeatReactions, setUserBeatReactions] = useState<{[key: string]: string}>({});
-  const [artistBeatReactions, setArtistBeatReactions] = useState<{[key: string]: string}>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -107,6 +105,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       if (commentsError) throw commentsError;
 
       console.log('Loaded comments data:', commentsData);
+      console.log('Post ID:', post.id, 'Post user_id:', post.user_id);
 
       if (!commentsData || commentsData.length === 0) {
         setReplies([]);
@@ -132,8 +131,6 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
 
       // Check which replies the current user has liked
       let userLikes: string[] = [];
-      let userBeatReactions: { [beatId: string]: string } = {};
-      let artistBeatReactions: { [beatId: string]: string } = {};
       
       // Always get fresh user data to avoid state issues
       const { data: { user: freshUser } } = await supabase.auth.getUser();
@@ -148,6 +145,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         userLikes = likesData?.map(l => l.comment_id) || [];
 
         // Load beat reactions for the current user (for sorting purposes)
+        console.log('Checking beat reactions - freshUser.id:', freshUser.id, 'post.user_id:', post.user_id);
         if (freshUser.id === post.user_id) {
           const beatIds = commentsData
             .filter(c => c.beats?.id)
@@ -160,40 +158,22 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
               .eq('user_id', freshUser.id)
               .in('beat_id', beatIds);
             
-            userBeatReactions = reactionsData?.reduce((acc, r) => {
-              acc[r.beat_id] = r.reaction;
-              return acc;
-            }, {} as { [beatId: string]: string }) || {};
+            // Store reactions for display
+            const reactionMap: { [beatId: string]: string } = {};
+            reactionsData?.forEach(reaction => {
+              reactionMap[reaction.beat_id] = reaction.reaction;
+            });
+            
+            // Update the transformed comments with reaction data
+            commentsData.forEach((comment, index) => {
+              if (comment.beats?.id && reactionMap[comment.beats.id]) {
+                comment.beatReaction = reactionMap[comment.beats.id];
+              }
+            });
           }
         }
-
-              // Load beat reactions for artists (reply authors) - for "Liked by Artist" indicators
-      // We want to show if the artist has liked their own beat in the review screen
-      const artistBeatReactions: { [userId: string]: string } = {};
-      
-      if (commentsData.length > 0) {
-        const artistUserIds = commentsData.map(c => c.user_id);
-        const beatIds = commentsData
-          .filter(c => c.beats?.id)
-          .map(c => c.beats.id);
-        
-        if (beatIds.length > 0) {
-          // Get beat reactions where artists reacted to their own beats
-          const { data: beatReactionsData } = await supabase
-            .from('beat_reactions')
-            .select('beat_id, reaction, user_id')
-            .in('beat_id', beatIds)
-            .in('user_id', artistUserIds);
-          
-          // Map which artists have liked their own beats
-          beatReactionsData?.forEach(reaction => {
-            artistBeatReactions[reaction.user_id] = reaction.reaction;
-          });
-        }
-      }
       }
 
-      
       // Transform comments with author info and beat data
       let transformedComments = commentsData.map((comment: any) => {
         const profile = profileMap.get(comment.user_id);
@@ -223,7 +203,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             }),
           likes: comment.likes_count || 0,
           isLiked: userLikes.includes(comment.id),
-          beatReaction: comment.beats?.id ? userBeatReactions[comment.beats.id] : null
+          beatReaction: comment.beatReaction || null
         };
       });
 
@@ -274,9 +254,6 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         });
       }
 
-      console.log('Transformed comments:', transformedComments);
-      console.log('Artist beat reactions:', artistBeatReactions);
-      console.log('User beat reactions:', userBeatReactions);
       setReplies(transformedComments);
 
       // Load download status for beats
@@ -296,10 +273,6 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         });
         
         setDownloadStatus(downloadMap);
-        
-        // Set user beat reactions state
-        setUserBeatReactions(userBeatReactions);
-        setArtistBeatReactions(artistBeatReactions);
       }
     } catch (error) {
       console.error('Error loading comments:', error);
@@ -375,11 +348,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
 
   const handleReplyLike = async (replyId: string, isCurrentlyLiked: boolean) => {
     if (!currentUser) {
-      toast({
-        title: 'Please log in',
-        description: 'You need to be logged in to like replies',
-        variant: 'destructive'
-      });
+      onSignIn?.();
       return;
     }
 
@@ -764,37 +733,17 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                          </div>
                        )}
 
-                       {/* Liked indicator - only show to beat creator */}
-                       {(() => {
-                         const hasLiked = artistBeatReactions[reply.user_id] === 'like';
-                         console.log('Checking liked indicator:', {
-                           currentUserId: currentUser?.id,
-                           postUserId: post.user_id,
-                           replyUserId: reply.user_id,
-                           hasLiked,
-                           artistBeatReactions: artistBeatReactions
-                         });
-                         return currentUser && currentUser.id === post.user_id && hasLiked;
-                       })() && (
-                         <div className="absolute top-2 right-2 z-10">
-                           <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1">
-                             <Heart className="w-3 h-3 fill-current" />
-                             Liked by Artist
-                           </div>
-                         </div>
-                       )}
-
-
-                       
-                       <BeatPlayer
-                         audioUrl={reply.beat.file_url}
-                         title={reply.beat.title}
-                         artist={reply.beat.artist}
-                         bpm={reply.beat.bpm || undefined}
-                         beatKey={reply.beat.key || undefined}
-                         purchaseLink={reply.beat.purchase_link || undefined}
-                         className="max-w-md"
-                       />
+                       <div onClick={(e) => e.stopPropagation()}>
+                         <BeatPlayer
+                           audioUrl={reply.beat.file_url}
+                           title={reply.beat.title}
+                           artist={reply.beat.artist}
+                           bpm={reply.beat.bpm || undefined}
+                           beatKey={reply.beat.key || undefined}
+                           purchaseLink={reply.beat.purchase_link || undefined}
+                           className="max-w-md"
+                         />
+                       </div>
                      </div>
                    ) : (
                      /* Display text content for old text replies */
