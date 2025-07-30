@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft, MessageCircle, Heart, Play, Volume2, Youtube } from 'lucide-react';
+import { MapPin, Link as LinkIcon, Calendar, Star, Edit, Instagram, Twitter, Music, ArrowLeft, MessageCircle, Heart, Play, Volume2, Youtube, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,11 +38,13 @@ interface UserProfileProps {
   };
   isOwnProfile?: boolean;
   onBackToFeed?: () => void;
-  onPostClick?: (postId: string) => void;
+  onPostClick?: (postId: string, profileData?: any) => void;
   userId?: string;
+  onProfileUpdate?: (profile: any) => void;
+  onSignIn?: () => void;
 }
 
-export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, userId }: UserProfileProps) => {
+export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, userId, onProfileUpdate, onSignIn }: UserProfileProps) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -63,6 +65,9 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const [showDownloadsModal, setShowDownloadsModal] = useState(false);
+  const [userDownloads, setUserDownloads] = useState<any[]>([]);
+  const [loadingDownloads, setLoadingDownloads] = useState(false);
   const { toast } = useToast();
 
 
@@ -86,9 +91,9 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
 
   const profileUser = currentProfile || user || defaultUser;
 
-  useEffect(() => {
-    console.log('UserProfile useEffect triggered with userId:', userId);
-    setLoading(true);
+      useEffect(() => {
+      console.log('UserProfile useEffect triggered with userId:', userId);
+      setLoading(true);
     
     const loadAll = async () => {
       try {
@@ -111,11 +116,11 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
-      // Use the provided userId or fall back to current user
-      const targetUserId = userId || currentUser.id;
-      console.log('Loading activity for user ID:', targetUserId);
-
-      // Load user's posts
+              // Use the provided userId or fall back to current user
+        const targetUserId = userId || currentUser.id;
+        console.log('Loading activity for user ID:', targetUserId);
+ 
+        // Load user's posts
       const { data: posts, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -127,11 +132,11 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
           user_id
         `)
         .eq('user_id', targetUserId)
-        .order('created_at', { ascending: false });
-
-      console.log('Posts query result:', posts, 'Error:', postsError);
-
-      // Load user's replies (comments with beats)
+                  .order('created_at', { ascending: false });
+ 
+        console.log('Posts query result:', posts, 'Error:', postsError);
+ 
+        // Load user's replies (comments with beats)
       const { data: replies, error: repliesError } = await supabase
         .from('comments')
         .select(`
@@ -150,18 +155,16 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
             file_url,
             bpm,
             key,
-            mood,
-            price,
-            duration
+            purchase_link
           )
         `)
         .eq('user_id', targetUserId)
         .not('beat_id', 'is', null)
-        .order('created_at', { ascending: false });
-
-      console.log('Replies query result:', replies, 'Error:', repliesError);
-
-      // Check which replies the current user has liked
+                  .order('created_at', { ascending: false });
+ 
+        console.log('Replies query result:', replies, 'Error:', repliesError);
+ 
+        // Check which replies the current user has liked
       let userLikes: string[] = [];
       if (replies?.length) {
         const { data: likesData } = await supabase
@@ -178,11 +181,11 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
         .from('profiles')
         .select('*')
         .eq('user_id', targetUserId)
-        .single();
-
-      console.log('User profile:', userProfile);
-
-      // Transform replies to include like state
+                  .single();
+ 
+        console.log('User profile:', userProfile);
+ 
+        // Transform replies to include like state
       const transformedReplies = replies?.map(reply => ({
         ...reply,
         isLiked: userLikes.includes(reply.id)
@@ -246,7 +249,12 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
   const handleFollow = async () => {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser || !userId || userId === currentUser.id) return;
+      if (!currentUser) {
+        onSignIn?.();
+        return;
+      }
+      
+      if (!userId || userId === currentUser.id) return;
 
       if (isFollowing) {
         // Unfollow
@@ -448,6 +456,9 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
         following: updatedProfile.following_count || 0
       }
     });
+    
+    // Also notify the parent component to update the navbar
+    onProfileUpdate?.(updatedProfile);
   };
 
   const handleShare = (postId: string) => {
@@ -455,6 +466,157 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
     const postUrl = `${window.location.origin}/post/${postId}`;
     setShareUrl(postUrl);
     setShowShareModal(true);
+  };
+
+  const handleUnfollow = async (userIdToUnfollow: string) => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+
+      // Remove the follow relationship
+      const { error } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userIdToUnfollow);
+
+      if (error) throw error;
+
+      // Remove the user from the following list
+      setFollowingList(prev => prev.filter(user => user.user_id !== userIdToUnfollow));
+      
+      // Update the following count
+      setFollowingCount(prev => Math.max(0, prev - 1));
+
+      toast({
+        title: "Unfollowed",
+        description: "User has been removed from your following list.",
+      });
+    } catch (error) {
+      console.error('Error unfollowing user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to unfollow user. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadUserDownloads = async () => {
+    try {
+      setLoadingDownloads(true);
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+
+      // Get all downloads for the current user
+      const { data: downloads, error } = await (supabase as any)
+        .from('downloads')
+        .select(`
+          beat_id,
+          downloaded_at,
+          beats (
+            id,
+            title,
+            artist,
+            file_url,
+            bpm,
+            key,
+            purchase_link,
+            user_id
+          )
+        `)
+        .eq('downloaded_by', currentUser.id)
+        .order('downloaded_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Get producer names for the beats
+      const beatUserIds = downloads?.map(download => download.beats?.user_id).filter(Boolean) || [];
+      const { data: producerProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username')
+        .in('user_id', beatUserIds);
+
+      // Create profile map
+      const profileMap = new Map();
+      producerProfiles?.forEach(profile => {
+        profileMap.set(profile.user_id, profile);
+      });
+
+      // Remove duplicates and add producer names
+      const uniqueDownloads = downloads?.reduce((acc: any[], download: any) => {
+        const existingIndex = acc.findIndex(d => d.beat_id === download.beat_id);
+        if (existingIndex === -1) {
+          const producerProfile = profileMap.get(download.beats?.user_id);
+          acc.push({
+            ...download,
+            beats: {
+              ...download.beats,
+              producer_name: producerProfile?.display_name || producerProfile?.username || 'Anonymous'
+            }
+          });
+        }
+        return acc;
+      }, []) || [];
+
+      setUserDownloads(uniqueDownloads);
+    } catch (error) {
+      console.error('Error loading downloads:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load downloads. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingDownloads(false);
+    }
+  };
+
+  const handleDownloadBeat = async (fileUrl: string, beatData: any, beatId: string) => {
+    try {
+      // Fetch the file as a blob
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch file');
+      }
+      
+      const blob = await response.blob();
+      
+      // Create filename with format: producersname-title_bpm_key
+      const producerName = beatData.producer_name || beatData.artist || 'unknown';
+      const title = beatData.title || 'untitled';
+      const bpm = beatData.bpm || '';
+      const key = beatData.key || '';
+      const fileName = `${producerName}-${title}_${bpm}_${key}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+      
+      // Create a blob URL
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
+
+      toast({
+        title: 'Download Started',
+        description: 'Your beat is being downloaded.',
+      });
+    } catch (error) {
+      console.error('Error downloading beat:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Failed to download the beat. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
 
   // Show followers/following lists
@@ -475,19 +637,11 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
           <div className="space-y-4">
             {followersList.map((follower) => (
               <div key={follower.user_id} className="flex items-center gap-3 p-3 hover:bg-muted rounded-lg transition-colors">
-                {follower.avatar_url ? (
-                  <img 
-                    src={follower.avatar_url} 
-                    alt={follower.display_name || follower.username}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                    <span className="text-lg font-bold">
-                      {(follower.display_name || follower.username || 'U').charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                <InitialsAvatar
+                  name={follower.display_name || follower.username || 'User'}
+                  avatarUrl={follower.avatar_url}
+                  size="md"
+                />
                 <div>
                   <div className="font-medium">{follower.display_name || 'Anonymous'}</div>
                   <div className="text-sm text-muted-foreground">@{follower.username}</div>
@@ -521,24 +675,28 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
           <h2 className="text-2xl font-bold mb-6">Following ({followingList.length})</h2>
           <div className="space-y-4">
             {followingList.map((following) => (
-              <div key={following.user_id} className="flex items-center gap-3 p-3 hover:bg-muted rounded-lg transition-colors">
-                {following.avatar_url ? (
-                  <img 
-                    src={following.avatar_url} 
-                    alt={following.display_name || following.username}
-                    className="w-12 h-12 rounded-full object-cover"
+              <div key={following.user_id} className="flex items-center justify-between p-3 hover:bg-muted rounded-lg transition-colors">
+                <div className="flex items-center gap-3">
+                  <InitialsAvatar
+                    name={following.display_name || following.username || 'User'}
+                    avatarUrl={following.avatar_url}
+                    size="md"
                   />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                    <span className="text-lg font-bold">
-                      {(following.display_name || following.username || 'U').charAt(0).toUpperCase()}
-                    </span>
+                  <div>
+                    <div className="font-medium">{following.display_name || 'Anonymous'}</div>
+                    <div className="text-sm text-muted-foreground">@{following.username}</div>
                   </div>
-                )}
-                <div>
-                  <div className="font-medium">{following.display_name || 'Anonymous'}</div>
-                  <div className="text-sm text-muted-foreground">@{following.username}</div>
                 </div>
+                {isOwnProfile && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleUnfollow(following.user_id)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                  >
+                    Unfollow
+                  </Button>
+                )}
               </div>
             ))}
             {followingList.length === 0 && (
@@ -673,10 +831,19 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
               {isOwnProfile ? (
-                <Button className="btn-gradient" onClick={() => setShowEditModal(true)}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Profile
-                </Button>
+                <>
+                  <Button className="btn-gradient" onClick={() => setShowEditModal(true)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                  <Button variant="outline" onClick={() => {
+                    setShowDownloadsModal(true);
+                    loadUserDownloads();
+                  }}>
+                    <Download className="w-4 h-4 mr-2" />
+                    My Downloads
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button 
@@ -761,6 +928,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                     comments: postData.comments_count || 0,
                     isLiked: false
                   }}
+
                   onLike={() => {
                     // Handle like functionality - no need to prevent event since UserPost handles it
                   }}
@@ -768,7 +936,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                     // Handle comment functionality
                   }}
                   onShare={() => handleShare(postData.id)}
-                  onPostClick={() => onPostClick?.(postData.id)}
+                  onPostClick={() => onPostClick?.(postData.id, currentProfile)}
                 />
               </div>
             ))
@@ -822,8 +990,8 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                           title={reply.beats.title || 'Untitled Beat'}
                           artist={reply.beats.artist || currentProfile?.name || 'Anonymous'}
                           bpm={reply.beats.bpm || undefined}
-                          key={reply.beats.key || undefined}
-                          mood={reply.beats.mood || undefined}
+                          beatKey={reply.beats.key || undefined}
+                          purchaseLink={reply.beats.purchase_link || undefined}
                           className="p-4"
                          />
                        </div>
@@ -859,6 +1027,94 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
         url={shareUrl}
         title="Share Post"
       />
+
+      {/* Downloads Modal */}
+      {showDownloadsModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-2xl font-bold text-foreground">My Downloads</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDownloadsModal(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {loadingDownloads ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Loading downloads...
+                </div>
+              ) : userDownloads.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Download className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <h3 className="text-lg font-semibold mb-2">No downloads yet</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Download some beats to see them here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {userDownloads.map((download) => (
+                    <div key={download.beat_id} className="beat-card space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Download className="w-5 h-5 text-green-500" />
+                          <div>
+                            <div className="font-semibold text-foreground">
+                              Downloaded on {new Date(download.downloaded_at).toLocaleDateString()}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(download.downloaded_at).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {download.beats && (
+                        <div className="bg-muted/30 rounded-lg border border-border overflow-hidden">
+                          <BeatPlayer
+                            audioUrl={download.beats.file_url || ''}
+                            title={download.beats.title || 'Untitled Beat'}
+                            artist={download.beats.artist || 'Anonymous'}
+                            bpm={download.beats.bpm || undefined}
+                            beatKey={download.beats.key || undefined}
+                            purchaseLink={download.beats.purchase_link || undefined}
+                            className="p-4"
+                          />
+                          
+                          {/* Download Button */}
+                          <div className="p-4 border-t border-border/30">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                handleDownloadBeat(
+                                  download.beats.file_url,
+                                  download.beats,
+                                  download.beats.id
+                                );
+                              }}
+                              className="flex items-center gap-2 w-full"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download Again
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

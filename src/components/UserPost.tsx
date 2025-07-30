@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp, X, Music, ArrowUp, ArrowDown } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, Trash2, Clock, TrendingUp, X, Music, ArrowUp, ArrowDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from './PostComposer';
 import { BeatPlayer } from './BeatPlayer';
@@ -41,14 +41,19 @@ interface UserPostProps {
   onPostClick?: () => void;
   onDelete?: () => void;
   onUserProfileClick?: (userId: string) => void;
+  onSignIn?: () => void;
+  currentProfile?: any; // Add currentProfile prop for consistency
 }
 
-export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDelete, onUserProfileClick }: UserPostProps) => {
+export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDelete, onUserProfileClick, onSignIn, currentProfile }: UserPostProps) => {
   const [showReplyComposer, setShowReplyComposer] = useState(false);
   const [replies, setReplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [sortBy, setSortBy] = useState<'likes' | 'recent' | 'my_likes' | 'bpm_low' | 'bpm_high' | 'key' | 'mood'>('likes');
+  const [sortBy, setSortBy] = useState<'likes' | 'recent' | 'my_likes'>('likes');
+  const [downloadStatus, setDownloadStatus] = useState<{[key: string]: boolean}>({});
+  const [userBeatReactions, setUserBeatReactions] = useState<{[key: string]: string}>({});
+  const [artistBeatReactions, setArtistBeatReactions] = useState<{[key: string]: string}>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -64,49 +69,44 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
   const loadComments = async () => {
     try {
       // For basic sorting (likes, recent), use database ordering
-      // For beat-specific sorting (BPM, key, mood), fetch all and sort client-side
       let orderBy = 'likes_count';
       let ascending = false;
       let useClientSideSort = false;
       
-      if (['bpm_low', 'bpm_high', 'key', 'mood'].includes(sortBy)) {
-        useClientSideSort = true;
-        orderBy = 'created_at'; // Default order for fetching
-        ascending = false;
-      } else {
-        switch (sortBy) {
-          case 'likes':
-            orderBy = 'likes_count';
-            ascending = false;
-            break;
-          case 'recent':
-            orderBy = 'created_at';
-            ascending = false;
-            break;
-          default:
-            orderBy = 'likes_count';
-            ascending = false;
-        }
+      switch (sortBy) {
+        case 'likes':
+          orderBy = 'likes_count';
+          ascending = false;
+          break;
+        case 'recent':
+          orderBy = 'created_at';
+          ascending = false;
+          break;
+        default:
+          orderBy = 'likes_count';
+          ascending = false;
       }
       
-      const { data: commentsData, error: commentsError } = await supabase
+      const { data: commentsData, error: commentsError } = await (supabase as any)
         .from('comments')
         .select(`
           *,
-          beats (
+          beats!beat_id (
             id,
             title,
             artist,
             file_url,
             bpm,
             key,
-            mood
+            purchase_link
           )
         `)
         .eq('post_id', post.id)
         .order(orderBy, { ascending });
 
       if (commentsError) throw commentsError;
+
+      console.log('Loaded comments data:', commentsData);
 
       if (!commentsData || commentsData.length === 0) {
         setReplies([]);
@@ -133,6 +133,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       // Check which replies the current user has liked
       let userLikes: string[] = [];
       let userBeatReactions: { [beatId: string]: string } = {};
+      let artistBeatReactions: { [beatId: string]: string } = {};
       
       // Always get fresh user data to avoid state issues
       const { data: { user: freshUser } } = await supabase.auth.getUser();
@@ -146,7 +147,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         
         userLikes = likesData?.map(l => l.comment_id) || [];
 
-        // Also load beat reactions if this is the post owner
+        // Load beat reactions for the current user (for sorting purposes)
         if (freshUser.id === post.user_id) {
           const beatIds = commentsData
             .filter(c => c.beats?.id)
@@ -165,6 +166,31 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             }, {} as { [beatId: string]: string }) || {};
           }
         }
+
+              // Load beat reactions for artists (reply authors) - for "Liked by Artist" indicators
+      // We want to show if the artist has liked their own beat in the review screen
+      const artistBeatReactions: { [userId: string]: string } = {};
+      
+      if (commentsData.length > 0) {
+        const artistUserIds = commentsData.map(c => c.user_id);
+        const beatIds = commentsData
+          .filter(c => c.beats?.id)
+          .map(c => c.beats.id);
+        
+        if (beatIds.length > 0) {
+          // Get beat reactions where artists reacted to their own beats
+          const { data: beatReactionsData } = await supabase
+            .from('beat_reactions')
+            .select('beat_id, reaction, user_id')
+            .in('beat_id', beatIds)
+            .in('user_id', artistUserIds);
+          
+          // Map which artists have liked their own beats
+          beatReactionsData?.forEach(reaction => {
+            artistBeatReactions[reaction.user_id] = reaction.reaction;
+          });
+        }
+      }
       }
 
       
@@ -180,7 +206,8 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             file_url: comment.beats.file_url,
             bpm: comment.beats.bpm,
             key: comment.beats.key,
-            mood: comment.beats.mood
+            purchase_link: comment.beats.purchase_link,
+            producer_name: profile?.display_name || profile?.username || 'Anonymous'
           } : null,
           author: {
             name: profile?.display_name || profile?.username || 'Anonymous User',
@@ -200,45 +227,80 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         };
       });
 
-      // Apply client-side sorting for beat-specific options
-      if (useClientSideSort) {
+      // Apply custom sorting for "Most Liked" - show liked beats first, then disliked, then unreviewed
+      if (sortBy === 'likes' && currentUser?.id === post.user_id) {
         transformedComments.sort((a, b) => {
-          // Only sort comments that have beats
-          if (!a.beat && !b.beat) return 0;
-          if (!a.beat) return 1; // Comments without beats go to the end
-          if (!b.beat) return -1; // Comments with beats go to the front
-
-          switch (sortBy) {
-            case 'bpm_low':
-              const bpmA = a.beat.bpm || 0;
-              const bpmB = b.beat.bpm || 0;
-              return bpmA - bpmB; // Ascending
-            case 'bpm_high':
-              const bpmA2 = a.beat.bpm || 0;
-              const bpmB2 = b.beat.bpm || 0;
-              return bpmB2 - bpmA2; // Descending
-            case 'key':
-              const keyA = a.beat.key || '';
-              const keyB = b.beat.key || '';
-              return keyA.localeCompare(keyB); // Alphabetical
-            case 'mood':
-              const moodA = a.beat.mood?.[0] || '';
-              const moodB = b.beat.mood?.[0] || '';
-              return moodA.localeCompare(moodB); // Alphabetical by first mood
-            default:
-              return 0;
+          // First, sort by reaction status: liked > disliked > unreviewed
+          const getReactionPriority = (reaction: string | null) => {
+            if (reaction === 'like') return 3;
+            if (reaction === 'dislike') return 2;
+            return 1; // unreviewed
+          };
+          
+          const priorityA = getReactionPriority(a.beatReaction);
+          const priorityB = getReactionPriority(b.beatReaction);
+          
+          if (priorityA !== priorityB) {
+            return priorityB - priorityA; // Higher priority first
           }
+          
+          // If same reaction status, sort by likes count (descending)
+          return (b.likes || 0) - (a.likes || 0);
+        });
+      } else if (sortBy === 'likes') {
+        // For non-post owners, sort by likes count (descending)
+        transformedComments.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+      }
+      
+      // Apply "My Likes" sorting - show all beats with liked ones at top, then disliked, then unreviewed
+      if (sortBy === 'my_likes' && currentUser?.id === post.user_id) {
+        transformedComments.sort((a, b) => {
+          // First, sort by reaction status: liked > disliked > unreviewed
+          const getReactionPriority = (reaction: string | null) => {
+            if (reaction === 'like') return 3;
+            if (reaction === 'dislike') return 2;
+            return 1; // unreviewed
+          };
+          
+          const priorityA = getReactionPriority(a.beatReaction);
+          const priorityB = getReactionPriority(b.beatReaction);
+          
+          if (priorityA !== priorityB) {
+            return priorityB - priorityA; // Higher priority first
+          }
+          
+          // If same reaction status, sort by likes count (descending)
+          return (b.likes || 0) - (a.likes || 0);
         });
       }
 
-      // Apply "My Likes" filtering if selected
-      if (sortBy === 'my_likes' && currentUser?.id === post.user_id) {
-        transformedComments = transformedComments.filter(comment => 
-          comment.beatReaction === 'like'
-        );
-      }
-
+      console.log('Transformed comments:', transformedComments);
+      console.log('Artist beat reactions:', artistBeatReactions);
+      console.log('User beat reactions:', userBeatReactions);
       setReplies(transformedComments);
+
+      // Load download status for beats
+      if (transformedComments.some(reply => reply.beat)) {
+        const beatIds = transformedComments
+          .filter(reply => reply.beat)
+          .map(reply => reply.beat.id);
+        
+        const { data: downloadsData } = await (supabase as any)
+          .from('downloads')
+          .select('beat_id')
+          .in('beat_id', beatIds);
+        
+        const downloadMap: {[key: string]: boolean} = {};
+        downloadsData?.forEach((download: any) => {
+          downloadMap[download.beat_id] = true;
+        });
+        
+        setDownloadStatus(downloadMap);
+        
+        // Set user beat reactions state
+        setUserBeatReactions(userBeatReactions);
+        setArtistBeatReactions(artistBeatReactions);
+      }
     } catch (error) {
       console.error('Error loading comments:', error);
     }
@@ -267,6 +329,9 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         title: 'Success',
         description: 'Post deleted successfully'
       });
+
+      // Dispatch custom event to notify PostComposer about post deletion
+      window.dispatchEvent(new CustomEvent('postDeleted'));
 
       onDelete?.();
     } catch (error) {
@@ -318,17 +383,6 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       return;
     }
 
-    // Optimistic update
-    setReplies(prev => prev.map(reply => 
-      reply.id === replyId 
-        ? { 
-            ...reply, 
-            isLiked: !isCurrentlyLiked, 
-            likes: isCurrentlyLiked ? reply.likes - 1 : reply.likes + 1 
-          }
-        : reply
-    ));
-
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
@@ -351,26 +405,81 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         if (insertError) throw insertError;
       }
       
-      // Small delay to ensure database consistency, then reload
-      setTimeout(async () => {
-        await loadComments();
-      }, 100);
+      // Reload comments to get accurate like counts from database
+      await loadComments();
     } catch (error) {
-      // Revert optimistic update on error
-      setReplies(prev => prev.map(reply => 
-        reply.id === replyId 
-          ? { 
-              ...reply, 
-              isLiked: isCurrentlyLiked, 
-              likes: isCurrentlyLiked ? reply.likes + 1 : reply.likes - 1 
-            }
-          : reply
-      ));
       
       console.error('Error toggling reply like:', error);
       toast({
         title: 'Error',
         description: 'Failed to toggle like',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDownloadBeat = async (fileUrl: string, beatData: any, beatId: string) => {
+    try {
+      // Fetch the file as a blob
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch file');
+      }
+      
+      const blob = await response.blob();
+      
+      // Create filename with format: producersname-title_bpm_key
+      const producerName = beatData.producer_name || beatData.artist || 'unknown';
+      const title = beatData.title || 'untitled';
+      const bpm = beatData.bpm || '';
+      const key = beatData.key || '';
+      const fileName = `${producerName}-${title}_${bpm}_${key}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+      
+      // Create a blob URL
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
+
+      // Record the download in the database
+      if (currentUser && beatId) {
+        try {
+          await (supabase as any)
+            .from('downloads')
+            .upsert({
+              beat_id: beatId,
+              downloaded_by: currentUser.id
+            });
+          
+          // Update local state
+          setDownloadStatus(prev => ({
+            ...prev,
+            [beatId]: true
+          }));
+        } catch (downloadError) {
+          console.error('Error recording download:', downloadError);
+        }
+      }
+
+      toast({
+        title: 'Download Started',
+        description: 'Your beat is being downloaded.',
+      });
+    } catch (error) {
+      console.error('Error downloading beat:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Failed to download the beat. Please try again.',
         variant: 'destructive'
       });
     }
@@ -523,6 +632,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             placeholder="Reply with a beat..."
             isReply={true}
             parentPostId={post.id}
+            onSignIn={onSignIn}
           />
         </div>
       )}
@@ -534,7 +644,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             <span className="text-sm font-medium text-muted-foreground">
               Replies ({replies.length})
             </span>
-                          <Select value={sortBy} onValueChange={(value: 'likes' | 'recent' | 'my_likes' | 'bpm_low' | 'bpm_high' | 'key' | 'mood') => setSortBy(value)}>
+                          <Select value={sortBy} onValueChange={(value: 'likes' | 'recent' | 'my_likes') => setSortBy(value)}>
                 <SelectTrigger className="w-[160px] h-8">
                   <SelectValue />
                 </SelectTrigger>
@@ -559,34 +669,10 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                     </div>
                   </SelectItem>
                 )}
-                <SelectItem value="bpm_low">
-                  <div className="flex items-center gap-2">
-                    <ArrowUp className="w-3 h-3" />
-                    BPM Low→High
-                  </div>
-                </SelectItem>
-                <SelectItem value="bpm_high">
-                  <div className="flex items-center gap-2">
-                    <ArrowDown className="w-3 h-3" />
-                    BPM High→Low
-                  </div>
-                </SelectItem>
-                <SelectItem value="key">
-                  <div className="flex items-center gap-2">
-                    <Music className="w-3 h-3" />
-                    By Key
-                  </div>
-                </SelectItem>
-                <SelectItem value="mood">
-                  <div className="flex items-center gap-2">
-                    <Heart className="w-3 h-3" />
-                    By Mood
-                  </div>
-                </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {replies.map((reply, index) => {
+          {replies.slice(0, 3).map((reply, index) => {
             const isReplyOwner = currentUser && currentUser.id === reply.user_id;
             
             return (
@@ -667,13 +753,46 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                            )}
                          </div>
                        )}
+                       
+                       {/* Downloaded indicator - only show to beat creator */}
+                       {currentUser && currentUser.id === reply.user_id && downloadStatus[reply.beat.id] && (
+                         <div className="absolute top-2 left-2 z-10">
+                           <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1">
+                             <Download className="w-3 h-3" />
+                             Downloaded by Artist
+                           </div>
+                         </div>
+                       )}
+
+                       {/* Liked indicator - only show to beat creator */}
+                       {(() => {
+                         const hasLiked = artistBeatReactions[reply.user_id] === 'like';
+                         console.log('Checking liked indicator:', {
+                           currentUserId: currentUser?.id,
+                           postUserId: post.user_id,
+                           replyUserId: reply.user_id,
+                           hasLiked,
+                           artistBeatReactions: artistBeatReactions
+                         });
+                         return currentUser && currentUser.id === post.user_id && hasLiked;
+                       })() && (
+                         <div className="absolute top-2 right-2 z-10">
+                           <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1">
+                             <Heart className="w-3 h-3 fill-current" />
+                             Liked by Artist
+                           </div>
+                         </div>
+                       )}
+
+
+                       
                        <BeatPlayer
                          audioUrl={reply.beat.file_url}
                          title={reply.beat.title}
                          artist={reply.beat.artist}
                          bpm={reply.beat.bpm || undefined}
-                         key={reply.beat.key || undefined}
-                         mood={reply.beat.mood || undefined}
+                         beatKey={reply.beat.key || undefined}
+                         purchaseLink={reply.beat.purchase_link || undefined}
                          className="max-w-md"
                        />
                      </div>
@@ -700,13 +819,46 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                        <Heart className={`w-3 h-3 transition-all duration-300 ${
                          reply.isLiked ? 'fill-current scale-110' : ''
                        }`} />
-                                                     <span className="text-xs font-medium">{formatNumber(reply.likes)}</span>
+                       <span className="text-xs font-medium">{formatNumber(reply.likes)}</span>
                      </Button>
+                     
+                                           {/* Download button - only show for post creator (artist) */}
+                      {isPostOwner && reply.beat && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadBeat(reply.beat.file_url, reply.beat, reply.beat.id);
+                          }}
+                          className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-all duration-300"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span className="text-xs font-medium">Download</span>
+                        </Button>
+                      )}
                    </div>
                 </div>
               </div>
             );
           })}
+          
+          {/* See More Button */}
+          {replies.length > 3 && (
+            <div className="text-center pt-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPostClick?.();
+                }}
+                className="text-primary hover:text-primary/80"
+              >
+                See More Replies ({replies.length - 3} more)
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

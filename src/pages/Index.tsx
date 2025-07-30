@@ -27,6 +27,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'following'>('home');
 
   const [profileLoading, setProfileLoading] = useState(false);
+  const [currentProfileForPost, setCurrentProfileForPost] = useState<any>(null);
 
 
   useEffect(() => {
@@ -194,12 +195,32 @@ const Index = () => {
     }
   };
 
+  const handleProfileUpdate = async (updatedProfile: any) => {
+    // Update the userProfile state with the fresh data from the database
+    setUserProfile(updatedProfile);
+    
+    // Also refresh the profile data to ensure everything is in sync
+    if (user) {
+      await fetchUserProfile(user.id);
+    }
+  };
+
   const handlePostClick = (postId: string) => {
     // When clicking from profile, go directly to post detail view
     setSelectedPostId(postId);
     setShowPostDetail(true);
     setShowProfile(false);
     setHighlightedPostId(null);
+  };
+
+  const handlePostClickWithProfile = (postId: string, profileData: any) => {
+    // When clicking from profile with profile data, pass it to PostDetail
+    setSelectedPostId(postId);
+    setShowPostDetail(true);
+    setShowProfile(false);
+    setHighlightedPostId(null);
+    // Store the profile data for PostDetail to use
+    setCurrentProfileForPost(profileData);
   };
 
   const handlePostDetailView = (postId: string) => {
@@ -215,6 +236,11 @@ const Index = () => {
   };
 
   const handleBackFromBeatSwiper = () => {
+    // Navigate to post detail view instead of going back to feed
+    if (beatSwiperPostId) {
+      setSelectedPostId(beatSwiperPostId);
+      setShowPostDetail(true);
+    }
     setShowBeatSwiper(false);
     setBeatSwiperPostId(null);
   };
@@ -280,6 +306,8 @@ const Index = () => {
           postId={selectedPostId}
           onBack={handleBackFromPostDetail}
           onUserProfileClick={handleUserSelect}
+          onSignIn={() => setShowAuth(true)}
+          currentProfile={currentProfileForPost}
         />
       );
     }
@@ -307,102 +335,52 @@ const Index = () => {
         );
       }
       
-      return (
-        <UserProfile 
-          user={profileToShow ? {
-            name: profileToShow.display_name || 'Anonymous User',
-            username: profileToShow.username || '@user',
-            avatar: profileToShow.avatar_url || '',
-            bio: profileToShow.bio || 'No bio available',
-            location: profileToShow.location || 'Unknown',
-            joinDate: profileToShow.created_at ? new Date(profileToShow.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently',
-            website: profileToShow.website || '',
-            social: {
-              instagram: '',
-              twitter: '',
-              beatstars: ''
-            },
-            stats: {
-              followers: profileToShow.followers_count || 0,
-              following: profileToShow.following_count || 0,
-              likes: profileToShow.likes_count || 0
-            }
-          } : undefined}
-          isOwnProfile={!!isOwnProfile}
-          onBackToFeed={handleBackToFeed}
-          onPostClick={handlePostClick}
-          userId={viewingUserId || user?.id}
-        />
-      );
+              return (
+          <UserProfile 
+            user={profileToShow ? {
+              name: profileToShow.display_name || 'Anonymous User',
+              username: profileToShow.username || '@user',
+              avatar: profileToShow.avatar_url || '',
+              bio: profileToShow.bio || 'No bio available',
+              location: profileToShow.location || 'Unknown',
+              joinDate: profileToShow.created_at ? new Date(profileToShow.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently',
+              website: profileToShow.website || '',
+              social: {
+                instagram: '',
+                twitter: '',
+                beatstars: ''
+              },
+              stats: {
+                followers: profileToShow.followers_count || 0,
+                following: profileToShow.following_count || 0,
+                likes: profileToShow.likes_count || 0
+              }
+            } : undefined}
+            isOwnProfile={!!isOwnProfile}
+            onBackToFeed={handleBackToFeed}
+            onPostClick={handlePostClickWithProfile}
+            userId={viewingUserId || user?.id}
+            onProfileUpdate={handleProfileUpdate}
+            onSignIn={() => setShowAuth(true)}
+          />
+        );
     }
     
-    return <Feed highlightedPostId={highlightedPostId} onPostDetailView={handlePostDetailView} onUserProfileClick={handleUserSelect} activeTab={activeTab} />;
+    return <Feed highlightedPostId={highlightedPostId} onPostDetailView={handlePostDetailView} onUserProfileClick={handleUserSelect} activeTab={activeTab} onTabChange={handleTabChange} onSignIn={() => setShowAuth(true)} />;
   };
 
-  if (!user) {
-    return (
-      <>
-        <div className="min-h-screen bg-gradient-hero flex items-center justify-center relative overflow-hidden">
-          {/* Animated background elements */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-          </div>
-          
-          <div className="text-center space-y-8 relative z-10 max-w-2xl px-6">
-            <div className="space-y-4">
-              <h1 className="text-7xl md:text-8xl font-bold bg-gradient-primary bg-clip-text text-transparent animate-fade-in">
-                Beatify
-              </h1>
-              <div className="w-32 h-1 bg-gradient-primary mx-auto rounded-full shadow-glow"></div>
-            </div>
-            
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              The social platform where music creators connect, share beats, and discover new collaborations
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <Button 
-                onClick={() => setShowAuth(true)}
-                size="lg"
-                className="btn-gradient px-8 py-4 text-lg font-semibold min-w-[200px] shadow-glow"
-              >
-                Join the Community
-              </Button>
-              
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="flex -space-x-2">
-                  <div className="w-8 h-8 bg-gradient-primary rounded-full border-2 border-background"></div>
-                  <div className="w-8 h-8 bg-gradient-accent rounded-full border-2 border-background"></div>
-                  <div className="w-8 h-8 bg-gradient-ai rounded-full border-2 border-background"></div>
-                </div>
-                <span>Join 10,000+ creators</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <AuthModal 
-          isOpen={showAuth} 
-          onClose={() => setShowAuth(false)}
-          onAuth={setUser}
-        />
-      </>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-hero">
       <div className="navbar">
         <Navbar 
-          currentUser={navbarUser}
+          currentUser={user ? navbarUser : null}
           onUserProfileClick={handleUserSelect}
           onLogout={handleLogout}
           onLogoClick={handleBackToFeed}
           onUserSearch={handleUserSearch}
-          
-          onTabChange={handleTabChange}
-          activeTab={activeTab}
-
+          onSignIn={() => setShowAuth(true)}
         />
       </div>
       
@@ -411,6 +389,12 @@ const Index = () => {
           {renderContent()}
         </div>
       </main>
+      
+      <AuthModal 
+        isOpen={showAuth} 
+        onClose={() => setShowAuth(false)}
+        onAuth={setUser}
+      />
     </div>
   );
 };
