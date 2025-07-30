@@ -355,15 +355,17 @@ export const BeatSwiper = ({ postId, onBack }: BeatSwiperProps) => {
           )}
 
 
-          <BeatPlayer
-            audioUrl={currentBeat.beat.file_url || ''}
-            title={currentBeat.beat.title || 'Untitled Beat'}
-            artist={currentBeat.beat.artist || 'Anonymous'}
-            bpm={currentBeat.beat.bpm || undefined}
-            beatKey={currentBeat.beat.key || undefined}
-            purchaseLink={currentBeat.beat.purchase_link || undefined}
-            className="p-6"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <BeatPlayer
+              audioUrl={currentBeat.beat.file_url || ''}
+              title={currentBeat.beat.title || 'Untitled Beat'}
+              artist={currentBeat.beat.artist || 'Anonymous'}
+              bpm={currentBeat.beat.bpm || undefined}
+              beatKey={currentBeat.beat.key || undefined}
+              purchaseLink={currentBeat.beat.purchase_link || undefined}
+              className="p-6"
+            />
+          </div>
         </div>
 
         {/* Reply Content */}

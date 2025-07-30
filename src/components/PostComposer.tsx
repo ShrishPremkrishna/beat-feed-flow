@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, Music, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, Music, X, Image as ImageIcon, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -357,12 +357,18 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       )}
       <div className="flex items-start gap-3">
         <div className="relative">
-          <InitialsAvatar
-            name={userProfile?.display_name || userProfile?.username || 'User'}
-            avatarUrl={userProfile?.avatar_url}
-            size="md"
-            className="shadow-glow"
-          />
+          {userProfile ? (
+            <InitialsAvatar
+              name={userProfile.display_name || userProfile.username || 'User'}
+              avatarUrl={userProfile.avatar_url}
+              size="md"
+              className="shadow-glow"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-muted-foreground" />
+            </div>
+          )}
         </div>
         {!isReply && (
           <div className="flex-1">

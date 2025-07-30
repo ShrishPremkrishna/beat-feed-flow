@@ -98,7 +98,7 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
           
           {/* Purchase Link */}
           {purchaseLink && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <a
                 href={purchaseLink}
                 target="_blank"
@@ -118,7 +118,7 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
       {/* Player Controls */}
       <div className="space-y-2">
         {/* Progress Bar */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}>
           <span>{formatTime(currentTime)}</span>
           <Slider
             value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
@@ -135,7 +135,10 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={togglePlay}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlay();
+            }}
             className={`h-10 w-10 p-0 rounded-full transition-all duration-300 ${
               isPlaying 
                 ? 'bg-gradient-primary shadow-glow text-white hover:shadow-intense' 
@@ -150,7 +153,7 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
           </Button>
 
           {/* Volume Control */}
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto" onClick={(e) => e.stopPropagation()}>
             <Volume2 className="h-3 w-3 text-muted-foreground" />
             <Slider
               value={[volume]}
