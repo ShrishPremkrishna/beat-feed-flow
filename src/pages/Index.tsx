@@ -6,9 +6,11 @@ import { PostDetail } from '@/components/PostDetail';
 import { BeatSwiper } from '@/components/BeatSwiper';
 import { Chat } from '@/components/Chat';
 import { AuthModal } from '@/components/AuthModal';
+import { NotificationsPopup } from '@/components/NotificationsPopup';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
+import { Tables } from '@/integrations/supabase/types';
 
 const Index = () => {
   const [showProfile, setShowProfile] = useState(false);
@@ -26,6 +28,8 @@ const Index = () => {
   const [beatSwiperPostId, setBeatSwiperPostId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [chatUserId, setChatUserId] = useState<string | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const [activeTab, setActiveTab] = useState<'home' | 'following'>('home');
 
@@ -307,11 +311,83 @@ const Index = () => {
     setChatUserId(null);
   };
 
+  const handleNotificationsClick = () => {
+    setShowNotifications(!showNotifications);
+  };
+
+  const handleNotificationClick = (notification: Tables<'notifications'>) => {
+    // Handle notification click - navigate to relevant content
+    if (notification.action_url) {
+      // Parse action URL and navigate accordingly
+      if (notification.action_url === '/messages') {
+        handleMessagesClick();
+      } else if (notification.action_url.startsWith('/post/')) {
+        const postId = notification.action_url.replace('/post/', '');
+        handlePostDetailView(postId);
+      } else if (notification.action_url.startsWith('/profile/')) {
+        const userId = notification.action_url.replace('/profile/', '');
+        handleUserSelect(userId);
+      }
+    }
+  };
+
+  // Load unread notifications count
+  useEffect(() => {
+    if (user) {
+      loadUnreadNotificationsCount();
+      
+      // Set up real-time subscription for notifications
+      const channel = supabase
+        .channel('notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `recipient_id=eq.${user.id}`
+          },
+          () => {
+            loadUnreadNotificationsCount();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  const loadUnreadNotificationsCount = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('Loading unread notifications count for user:', user.id);
+      
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('recipient_id', user.id)
+        .eq('is_read', false);
+
+      if (error) {
+        console.error('Error loading unread notifications count:', error);
+        throw error;
+      }
+      
+      console.log('Unread notifications count:', count);
+      setUnreadNotifications(count || 0);
+    } catch (error) {
+      console.error('Error loading unread notifications count:', error);
+    }
+  };
+
   // Create navbar user object
   const navbarUser = userProfile ? {
     name: userProfile.display_name || 'User',
     avatar: userProfile.avatar_url || '',
-    notifications: 0,
+    notifications: unreadNotifications,
     user_id: userProfile.user_id
   } : undefined;
 
@@ -417,6 +493,7 @@ const Index = () => {
           onUserSearch={handleUserSearch}
           onSignIn={() => setShowAuth(true)}
           onMessagesClick={handleMessagesClick}
+          onNotificationsClick={handleNotificationsClick}
         />
       </div>
       
@@ -425,6 +502,14 @@ const Index = () => {
           {renderContent()}
         </div>
       </main>
+      
+      {/* Notifications Popup */}
+      <NotificationsPopup
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        currentUserId={user?.id}
+        onNotificationClick={handleNotificationClick}
+      />
       
       <AuthModal 
         isOpen={showAuth} 

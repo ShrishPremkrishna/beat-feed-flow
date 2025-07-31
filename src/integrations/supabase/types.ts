@@ -448,6 +448,82 @@ export type Database = {
           }
         ]
       }
+      notifications: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          recipient_id: string
+          actor_id: string | null
+          type: 'message' | 'like' | 'reply' | 'follow' | 'system'
+          title: string
+          content: string | null
+          post_id: string | null
+          comment_id: string | null
+          message_id: string | null
+          is_read: boolean
+          read_at: string | null
+          action_url: string | null
+          metadata: Json
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          recipient_id: string
+          actor_id?: string | null
+          type: 'message' | 'like' | 'reply' | 'follow' | 'system'
+          title: string
+          content?: string | null
+          post_id?: string | null
+          comment_id?: string | null
+          message_id?: string | null
+          is_read?: boolean
+          read_at?: string | null
+          action_url?: string | null
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          recipient_id?: string
+          actor_id?: string | null
+          type?: 'message' | 'like' | 'reply' | 'follow' | 'system'
+          title?: string
+          content?: string | null
+          post_id?: string | null
+          comment_id?: string | null
+          message_id?: string | null
+          is_read?: boolean
+          read_at?: string | null
+          action_url?: string | null
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
