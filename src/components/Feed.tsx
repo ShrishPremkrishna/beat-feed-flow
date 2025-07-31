@@ -235,34 +235,6 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* X-Style Navigation */}
-      <div className="sticky top-0 z-30 bg-gradient-hero/80 backdrop-blur-xl border-b border-border">
-        <div className="flex justify-center py-3">
-          <div className="flex items-center space-x-8">
-            <button
-              onClick={() => onTabChange?.('home')}
-              className={`text-lg font-semibold transition-colors duration-200 ${
-                activeTab === 'home'
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Discover
-            </button>
-            <button
-              onClick={() => onTabChange?.('following')}
-              className={`text-lg font-semibold transition-colors duration-200 ${
-                activeTab === 'following'
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Following
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Post Composer */}
       <PostComposer onPost={handleNewPost} onSignIn={onSignIn} />
 

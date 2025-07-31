@@ -102,24 +102,26 @@ export const Navbar = ({
   return (
     <>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-4 py-2">
+          <div className="relative flex items-center">
             {/* Logo - Left Side */}
             <div className="flex items-center gap-3 group cursor-pointer" onClick={onLogoClick}>
-              <div className="p-2 rounded-lg" style={{ backgroundColor: '#1A3831' }}>
+              <div className="px-3 py-2 rounded-lg" style={{ backgroundColor: '#1A3831' }}>
                 <img 
-                  src="/new-beatify-logo.png" 
+                  src="/new-logo.png" 
                   alt="Beatify" 
-                  className="h-16 w-auto transition-all duration-300 group-hover:scale-110"
+                  className="h-10 w-auto transition-all duration-300 group-hover:scale-110"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling.style.display = 'block';
+                  }}
                 />
+                <span className="text-white font-bold text-lg hidden">Beatify</span>
               </div>
             </div>
 
-            {/* Spacer */}
-            <div className="flex-1"></div>
-
-            {/* Centered Search Bar */}
-            <div className="flex-1 max-w-lg relative" ref={searchRef}>
+            {/* Absolutely Centered Search Bar */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 max-w-lg" ref={searchRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
@@ -134,11 +136,8 @@ export const Navbar = ({
               </div>
             </div>
 
-            {/* Spacer */}
-            <div className="flex-1"></div>
-
-            {/* Right Side Actions */}
-            <div className="flex items-center gap-2">
+            {/* Right Side Actions - Pushed to far right */}
+            <div className="flex items-center gap-2 ml-auto">
               {currentUser && (
                 <>
                   {/* Notifications Bell */}

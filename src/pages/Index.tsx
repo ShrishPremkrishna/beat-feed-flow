@@ -496,9 +496,39 @@ const Index = () => {
           onNotificationsClick={handleNotificationsClick}
         />
       </div>
+
+      {/* Discover/Following Tabs - Only show on feed view */}
+      {!showChat && !showProfile && !showPostDetail && !showBeatSwiper && (
+        <div className="sticky top-[60px] z-30 bg-gradient-hero/80 backdrop-blur-xl border-b border-border">
+          <div className="flex justify-center py-3">
+            <div className="flex items-center space-x-8">
+              <button
+                onClick={() => handleTabChange('home')}
+                className={`text-lg font-semibold transition-colors duration-200 ${
+                  activeTab === 'home'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Discover
+              </button>
+              <button
+                onClick={() => handleTabChange('following')}
+                className={`text-lg font-semibold transition-colors duration-200 ${
+                  activeTab === 'following'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Following
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
-      <main className={showChat ? "flex-1 flex flex-col" : "p-6 max-w-4xl mx-auto"}>
-        <div className={showChat ? "flex-1" : "space-y-6"}>
+      <main className={showChat ? "flex-1 flex flex-col" : "pt-4 px-4 max-w-4xl mx-auto"}>
+        <div className={showChat ? "flex-1" : "space-y-4"}>
           {renderContent()}
         </div>
       </main>
