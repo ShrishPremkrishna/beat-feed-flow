@@ -42,9 +42,10 @@ interface UserProfileProps {
   userId?: string;
   onProfileUpdate?: (profile: any) => void;
   onSignIn?: () => void;
+  onMessageUser?: (userId: string) => void;
 }
 
-export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, userId, onProfileUpdate, onSignIn }: UserProfileProps) => {
+export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, userId, onProfileUpdate, onSignIn, onMessageUser }: UserProfileProps) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -877,7 +878,8 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
                   >
                     {isFollowing ? 'Following' : 'Follow'}
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => onMessageUser?.(userId || '')}>
+                    <MessageCircle className="w-4 h-4 mr-2" />
                     Message
                   </Button>
                 </>

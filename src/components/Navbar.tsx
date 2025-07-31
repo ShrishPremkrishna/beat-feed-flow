@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Home, Heart, User, LogOut, Headphones, Music, Menu } from 'lucide-react';
+import { Search, Home, Heart, User, LogOut, Headphones, Music, Menu, MessageCircle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ interface NavbarProps {
   onUserSearch?: (query: string) => void;
   onLogout?: () => void;
   onSignIn?: () => void;
+  onMessagesClick?: () => void;
   currentUser?: {
     user_id?: string;
     name: string;
@@ -28,6 +29,7 @@ export const Navbar = ({
   onUserSearch, 
   onUserProfileClick,
   onSignIn,
+  onMessagesClick,
   currentUser 
 }: NavbarProps) => {
 
@@ -143,6 +145,19 @@ export const Navbar = ({
                 />
               </div>
             </div>
+
+            {/* Messages Button */}
+            {currentUser && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onMessagesClick}
+                className="hidden sm:flex items-center gap-2"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span className="hidden lg:block">Messages</span>
+              </Button>
+            )}
 
             {/* User Profile */}
             <div className="flex items-center gap-4 flex-shrink-0">
