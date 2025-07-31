@@ -480,6 +480,7 @@ export type Database = {
         }
         Relationships: []
       }
+
     }
     Views: {
       [_ in never]: never

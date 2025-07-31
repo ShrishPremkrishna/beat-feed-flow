@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Home, Heart, User, LogOut, Headphones, Music, Menu, MessageCircle } from 'lucide-react';
+import { Search, Home, Heart, User, LogOut, Headphones, Music, Menu, MessageCircle, Bell } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ interface NavbarProps {
   onLogout?: () => void;
   onSignIn?: () => void;
   onMessagesClick?: () => void;
+  onNotificationsClick?: () => void;
   currentUser?: {
     user_id?: string;
     name: string;
@@ -30,6 +31,7 @@ export const Navbar = ({
   onUserProfileClick,
   onSignIn,
   onMessagesClick,
+  onNotificationsClick,
   currentUser 
 }: NavbarProps) => {
 
@@ -100,38 +102,27 @@ export const Navbar = ({
   return (
     <>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            {/* Enhanced Logo inspired by reference */}
+        <div className="max-w-6xl mx-auto px-4 py-2">
+          <div className="relative flex items-center">
+            {/* Logo - Left Side */}
             <div className="flex items-center gap-3 group cursor-pointer" onClick={onLogoClick}>
-              {/* Logo Icon - Headphones with Music Note */}
-              <div className="relative">
-                <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow group-hover:shadow-intense transition-all duration-300 group-hover:scale-110">
-                  <div className="relative">
-                    <Headphones className="w-6 h-6 text-white" />
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-accent rounded-full flex items-center justify-center">
-                      <Music className="w-2 h-2 text-white" />
-                    </div>
-                  </div>
-                </div>
-                {/* Glow ring */}
-                <div className="absolute inset-0 w-10 h-10 rounded-full bg-gradient-primary opacity-20 blur-md group-hover:opacity-40 transition-opacity duration-300"></div>
-              </div>
-              
-              {/* Brand Text */}
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent group-hover:bg-gradient-accent group-hover:bg-clip-text transition-all duration-300">
-                  Beatify
-                </h1>
-                <div className="w-full h-0.5 bg-gradient-primary rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+              <div className="px-3 py-2 rounded-lg" style={{ backgroundColor: '#1A3831' }}>
+                <img 
+                  src="/new-logo.png" 
+                  alt="Beatify" 
+                  className="h-10 w-auto transition-all duration-300 group-hover:scale-110"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (nextElement) nextElement.style.display = 'block';
+                  }}
+                />
+                <span className="text-white font-bold text-lg hidden">Beatify</span>
               </div>
             </div>
 
-            {/* Spacer for centering */}
-            <div className="flex-1"></div>
-
-            {/* Search Bar */}
-            <div className="flex-1 max-w-md relative" ref={searchRef}>
+            {/* Absolutely Centered Search Bar */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 max-w-lg" ref={searchRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
@@ -141,27 +132,44 @@ export const Navbar = ({
                   onChange={(e) => handleSearch(e.target.value)}
                   onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
                   onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
-                  className="pl-10 bg-muted border-muted-foreground/20 focus:border-primary"
+                  className="pl-10 bg-muted border-muted-foreground/20 focus:border-primary w-full"
                 />
               </div>
             </div>
 
-            {/* Messages Button */}
-            {currentUser && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onMessagesClick}
-                className="hidden sm:flex items-center gap-2"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span className="hidden lg:block">Messages</span>
-              </Button>
-            )}
+            {/* Right Side Actions - Pushed to far right */}
+            <div className="flex items-center gap-2 ml-auto">
+              {currentUser && (
+                <>
+                  {/* Notifications Bell */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onNotificationsClick}
+                    className="relative p-2"
+                  >
+                    <Bell className="w-5 h-5" />
+                    {currentUser.notifications > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {currentUser.notifications > 9 ? '9+' : currentUser.notifications}
+                      </span>
+                    )}
+                  </Button>
 
-            {/* User Profile */}
-            <div className="flex items-center gap-4 flex-shrink-0">
-              {user ? (
+                  {/* Messages Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onMessagesClick}
+                    className="p-2"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                  </Button>
+                </>
+              )}
+
+              {/* User Profile */}
+              {currentUser ? (
                 /* User Profile Dropdown */
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
