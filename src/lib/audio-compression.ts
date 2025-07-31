@@ -141,7 +141,8 @@ const convertStreamToMp3 = async (
     };
     
     mediaRecorder.onerror = (event) => {
-      reject(new Error('MediaRecorder error: ' + event.error));
+      const errorEvent = event as any;
+      reject(new Error('MediaRecorder error: ' + (errorEvent.error || 'Unknown error')));
     };
     
     // Start recording

@@ -150,7 +150,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
           
           // Add timeout to prevent hanging compression
           const compressionPromise = fastCompressAudio(file, compressionOptions);
-          const timeoutPromise = new Promise<CompressionResult>((_, reject) => {
+          const timeoutPromise = new Promise<any>((_, reject) => {
             setTimeout(() => reject(new Error('Compression timeout')), 30000); // 30 second timeout
           });
           
