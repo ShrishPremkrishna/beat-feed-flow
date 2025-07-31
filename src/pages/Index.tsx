@@ -4,6 +4,7 @@ import { Feed } from '@/components/Feed';
 import { UserProfile } from '@/components/UserProfile';
 import { PostDetail } from '@/components/PostDetail';
 import { BeatSwiper } from '@/components/BeatSwiper';
+import { Chat } from '@/components/Chat';
 import { AuthModal } from '@/components/AuthModal';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +24,8 @@ const Index = () => {
   const [viewingUserProfile, setViewingUserProfile] = useState<any>(null);
   const [showBeatSwiper, setShowBeatSwiper] = useState(false);
   const [beatSwiperPostId, setBeatSwiperPostId] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [chatUserId, setChatUserId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'home' | 'following'>('home');
 
@@ -279,7 +282,29 @@ const Index = () => {
     setShowProfile(false);
     setShowPostDetail(false);
     setShowBeatSwiper(false);
+    setShowChat(false);
     setHighlightedPostId(null);
+  };
+
+  const handleMessagesClick = () => {
+    setShowChat(true);
+    setShowProfile(false);
+    setShowPostDetail(false);
+    setShowBeatSwiper(false);
+    setChatUserId(null);
+  };
+
+  const handleMessageUser = (userId: string) => {
+    setChatUserId(userId);
+    setShowChat(true);
+    setShowProfile(false);
+    setShowPostDetail(false);
+    setShowBeatSwiper(false);
+  };
+
+  const handleBackFromChat = () => {
+    setShowChat(false);
+    setChatUserId(null);
   };
 
   // Create navbar user object
@@ -291,6 +316,15 @@ const Index = () => {
   } : undefined;
 
   const renderContent = () => {
+    if (showChat) {
+      return (
+        <Chat 
+          onBack={handleBackFromChat}
+          initialUserId={chatUserId}
+        />
+      );
+    }
+
     if (showBeatSwiper && beatSwiperPostId) {
       return (
         <BeatSwiper 
@@ -362,6 +396,7 @@ const Index = () => {
             userId={viewingUserId || user?.id}
             onProfileUpdate={handleProfileUpdate}
             onSignIn={() => setShowAuth(true)}
+            onMessageUser={handleMessageUser}
           />
         );
     }
@@ -372,7 +407,7 @@ const Index = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
+    <div className={`${showChat ? 'h-screen flex flex-col' : 'min-h-screen'} bg-gradient-hero`}>
       <div className="navbar">
         <Navbar 
           currentUser={navbarUser}
@@ -381,11 +416,12 @@ const Index = () => {
           onLogoClick={handleBackToFeed}
           onUserSearch={handleUserSearch}
           onSignIn={() => setShowAuth(true)}
+          onMessagesClick={handleMessagesClick}
         />
       </div>
       
-      <main className="p-6 max-w-4xl mx-auto">
-        <div className="space-y-6">
+      <main className={showChat ? "flex-1 flex flex-col" : "p-6 max-w-4xl mx-auto"}>
+        <div className={showChat ? "flex-1" : "space-y-6"}>
           {renderContent()}
         </div>
       </main>
