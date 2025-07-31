@@ -94,6 +94,7 @@ export type Database = {
           plays_count: number | null
           post_id: string | null
           price: number | null
+          purchase_link: string | null
           title: string
           updated_at: string
           user_id: string
@@ -114,6 +115,7 @@ export type Database = {
           plays_count?: number | null
           post_id?: string | null
           price?: number | null
+          purchase_link?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -134,6 +136,7 @@ export type Database = {
           plays_count?: number | null
           post_id?: string | null
           price?: number | null
+          purchase_link?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -192,6 +195,68 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message: string | null
+          last_message_at: string | null
+          last_message_by: string | null
+          updated_at: string
+          user1_id: string
+          user2_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          last_message_by?: string | null
+          updated_at?: string
+          user1_id: string
+          user2_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          last_message_by?: string | null
+          updated_at?: string
+          user1_id?: string
+          user2_id?: string
+        }
+        Relationships: []
+      }
+      downloads: {
+        Row: {
+          beat_id: string
+          downloaded_at: string
+          downloaded_by: string
+          id: string
+        }
+        Insert: {
+          beat_id: string
+          downloaded_at?: string
+          downloaded_by: string
+          id?: string
+        }
+        Update: {
+          beat_id?: string
+          downloaded_at?: string
+          downloaded_by?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "downloads_beat_id_fkey"
+            columns: ["beat_id"]
+            isOneToOne: false
+            referencedRelation: "beats"
             referencedColumns: ["id"]
           },
         ]
@@ -262,6 +327,47 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          read_at: string | null
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          read_at?: string | null
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          read_at?: string | null
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -374,86 +480,15 @@ export type Database = {
         }
         Relationships: []
       }
-      conversations: {
-        Row: {
-          id: string
-          created_at: string
-          updated_at: string
-          user1_id: string
-          user2_id: string
-          last_message: string | null
-          last_message_at: string | null
-          last_message_by: string | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          user1_id: string
-          user2_id: string
-          last_message?: string | null
-          last_message_at?: string | null
-          last_message_by?: string | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          user1_id?: string
-          user2_id?: string
-          last_message?: string | null
-          last_message_at?: string | null
-          last_message_by?: string | null
-        }
-        Relationships: []
-      }
-      messages: {
-        Row: {
-          id: string
-          created_at: string
-          updated_at: string
-          conversation_id: string
-          sender_id: string
-          content: string
-          is_read: boolean
-          read_at: string | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          conversation_id: string
-          sender_id: string
-          content: string
-          is_read?: boolean
-          read_at?: string | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          conversation_id?: string
-          sender_id?: string
-          content?: string
-          is_read?: boolean
-          read_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      validate_filename: {
+        Args: { filename: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
