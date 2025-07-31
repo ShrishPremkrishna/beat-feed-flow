@@ -499,7 +499,7 @@ const Index = () => {
 
       {/* Discover/Following Tabs - Only show on feed view */}
       {!showChat && !showProfile && !showPostDetail && !showBeatSwiper && (
-        <div className="sticky top-[60px] z-30 bg-gradient-hero/80 backdrop-blur-xl border-b border-border">
+        <div className="bg-gradient-hero/80 backdrop-blur-xl border-b border-border">
           <div className="flex justify-center py-3">
             <div className="flex items-center space-x-8">
               <button

@@ -113,7 +113,8 @@ export const Navbar = ({
                   className="h-10 w-auto transition-all duration-300 group-hover:scale-110"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling.style.display = 'block';
+                    const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (nextElement) nextElement.style.display = 'block';
                   }}
                 />
                 <span className="text-white font-bold text-lg hidden">Beatify</span>
