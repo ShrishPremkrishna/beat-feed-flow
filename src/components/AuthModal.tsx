@@ -406,16 +406,6 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
 
 
 
-        <div className="text-center text-sm text-muted-foreground">
-          By signing up, you agree to our{' '}
-          <Button variant="link" className="p-0 h-auto text-sm text-primary">
-            Terms of Service
-          </Button>{' '}
-          and{' '}
-          <Button variant="link" className="p-0 h-auto text-sm text-primary">
-            Privacy Policy
-          </Button>
-        </div>
       </DialogContent>
     </Dialog>
   );
