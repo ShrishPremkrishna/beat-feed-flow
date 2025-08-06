@@ -106,9 +106,9 @@ export const Navbar = ({
           <div className="relative flex items-center">
             {/* Logo - Left Side */}
             <div className="flex items-center gap-3 group cursor-pointer" onClick={onLogoClick}>
-              <div className="px-3 py-2 rounded-lg" style={{ backgroundColor: '#1A3831' }}>
+              <div className="p-1 rounded-lg">
                 <img 
-                  src="/new-logo.png" 
+                  src="/beatify-logo.png" 
                   alt="Beatify" 
                   className="h-10 w-auto transition-all duration-300 group-hover:scale-110"
                   onError={(e) => {
