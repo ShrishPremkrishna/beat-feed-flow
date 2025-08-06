@@ -541,7 +541,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="w-full max-w-4xl mx-auto p-2 sm:p-6">
         <Button 
           variant="ghost" 
           onClick={onBack}
@@ -559,7 +559,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
 
   if (!post) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="w-full max-w-4xl mx-auto p-2 sm:p-6">
         <Button 
           variant="ghost" 
           onClick={onBack}
@@ -576,7 +576,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="w-full max-w-4xl mx-auto p-2 sm:p-6 space-y-4 sm:space-y-6">
       {/* Back Button */}
       <Button 
         variant="ghost" 
