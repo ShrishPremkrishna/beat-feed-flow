@@ -7,6 +7,7 @@ import { BeatSwiper } from '@/components/BeatSwiper';
 import { Chat } from '@/components/Chat';
 import { AuthModal } from '@/components/AuthModal';
 import { NotificationsPopup } from '@/components/NotificationsPopup';
+import { LandingPopup } from '@/components/LandingPopup';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -30,6 +31,11 @@ const Index = () => {
   const [chatUserId, setChatUserId] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showLandingPopup, setShowLandingPopup] = useState(() => {
+    // Check if user has already seen the landing popup
+    const hasSeenLanding = localStorage.getItem('beatify-landing-seen');
+    return !hasSeenLanding;
+  });
 
   const [activeTab, setActiveTab] = useState<'home' | 'following'>('home');
 
@@ -315,6 +321,11 @@ const Index = () => {
     setShowNotifications(!showNotifications);
   };
 
+  const handleLandingPopupClose = () => {
+    setShowLandingPopup(false);
+    localStorage.setItem('beatify-landing-seen', 'true');
+  };
+
   const handleNotificationClick = (notification: Tables<'notifications'>) => {
     // Handle notification click - navigate to relevant content
     if (notification.action_url) {
@@ -539,6 +550,12 @@ const Index = () => {
         onClose={() => setShowNotifications(false)}
         currentUserId={user?.id}
         onNotificationClick={handleNotificationClick}
+      />
+
+      {/* Landing Popup */}
+      <LandingPopup
+        isOpen={showLandingPopup}
+        onClose={handleLandingPopupClose}
       />
       
       <AuthModal 
