@@ -333,7 +333,7 @@ const Index = () => {
     console.log('Reset landing popup');
   };
 
-  const handleNotificationClick = (notification: Tables<'notifications'>) => {
+  const handleNotificationClick = (notification: any) => {
     // Handle notification click - navigate to relevant content
     if (notification.action_url) {
       // Parse action URL and navigate accordingly
@@ -582,7 +582,6 @@ const Index = () => {
       />
 
       {/* Landing Popup */}
-      {console.log('Rendering LandingPopup with isOpen:', showLandingPopup)}
       <LandingPopup
         isOpen={showLandingPopup}
         onClose={handleLandingPopupClose}

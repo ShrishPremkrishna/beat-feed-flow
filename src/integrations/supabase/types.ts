@@ -372,6 +372,82 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          action_url: string | null
+          actor_id: string | null
+          comment_id: string | null
+          content: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message_id: string | null
+          metadata: Json | null
+          post_id: string | null
+          read_at: string | null
+          recipient_id: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          action_url?: string | null
+          actor_id?: string | null
+          comment_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_id?: string | null
+          metadata?: Json | null
+          post_id?: string | null
+          read_at?: string | null
+          recipient_id: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          action_url?: string | null
+          actor_id?: string | null
+          comment_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_id?: string | null
+          metadata?: Json | null
+          post_id?: string | null
+          read_at?: string | null
+          recipient_id?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           comments_count: number | null
@@ -480,12 +556,34 @@ export type Database = {
         }
         Relationships: []
       }
-
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_notification: {
+        Args: {
+          recipient_user_id: string
+          notification_type: string
+          notification_title: string
+          actor_user_id?: string
+          notification_content?: string
+          related_post_id?: string
+          related_comment_id?: string
+          related_message_id?: string
+          notification_action_url?: string
+          notification_metadata?: Json
+        }
+        Returns: string
+      }
+      mark_all_notifications_read: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      mark_notification_read: {
+        Args: { notification_id: string }
+        Returns: undefined
+      }
       validate_filename: {
         Args: { filename: string }
         Returns: boolean

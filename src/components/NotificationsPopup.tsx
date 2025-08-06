@@ -3,16 +3,31 @@ import { Bell, X, MessageCircle, Heart, MessageSquare, UserPlus, Check } from 'l
 import { Button } from '@/components/ui/button';
 import { InitialsAvatar } from '@/components/ui/initials-avatar';
 import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/integrations/supabase/types';
-
-type Notification = Tables<'notifications'>;
+// Define notification interface since types may not be updated yet
+interface Notification {
+  id: string;
+  recipient_id: string;
+  actor_id: string | null;
+  type: string;
+  title: string;
+  content: string | null;
+  post_id: string | null;
+  comment_id: string | null;
+  message_id: string | null;
+  action_url: string | null;
+  metadata: any;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 interface NotificationWithProfile extends Notification {
   actor_profile?: {
     display_name: string | null;
     username: string;
     avatar_url: string | null;
-  };
+  } | null;
 }
 
 interface NotificationsPopupProps {
@@ -94,12 +109,12 @@ export const NotificationsPopup = ({
       if (error) {
         console.error('Join notifications query error:', error);
         // Fall back to simple data if join fails
-        setNotifications(simpleData || []);
+        setNotifications((simpleData || []) as any);
         return;
       }
 
       console.log('Notifications with profiles:', data);
-      setNotifications(data || []);
+      setNotifications((data || []) as any);
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {
