@@ -269,6 +269,16 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
           return;
         }
 
+        // Check if required fields are filled
+        if (!beatMetadata.key.trim() || !beatMetadata.bpm.trim()) {
+          toast({
+            title: "Required Fields Missing",
+            description: "Please fill in both Key and BPM fields.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         // Upload beat file and create beat record
         let coverArtUrl = null;
         if (coverArt) {
@@ -346,6 +356,15 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
         // Handle beat upload if there's a beat file
         let beatData = null;
         if (beatFile) {
+          // Check if required fields are filled when uploading a beat
+          if (!beatMetadata.key.trim() || !beatMetadata.bpm.trim()) {
+            toast({
+              title: "Required Fields Missing",
+              description: "Please fill in both Key and BPM fields.",
+              variant: "destructive",
+            });
+            return;
+          }
           let coverArtUrl = null;
           let beatFileUrl = null;
 
@@ -562,23 +581,25 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
             </div>
 
             <div>
-              <Label htmlFor="bpm">BPM</Label>
+              <Label htmlFor="bpm">BPM <span className="text-red-500">*</span></Label>
               <Input
                 id="bpm"
                 type="number"
                 value={beatMetadata.bpm}
                 onChange={(e) => setBeatMetadata(prev => ({ ...prev, bpm: e.target.value }))}
                 placeholder="120"
+                required
               />
             </div>
 
             <div>
-              <Label htmlFor="key">Key</Label>
+              <Label htmlFor="key">Key <span className="text-red-500">*</span></Label>
               <Input
                 id="key"
                 value={beatMetadata.key}
                 onChange={(e) => setBeatMetadata(prev => ({ ...prev, key: e.target.value }))}
                 placeholder="C Major"
+                required
               />
             </div>
 
@@ -641,8 +662,8 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
           onClick={handlePost}
           disabled={
             isReply 
-              ? !beatFile || isLoading || !canPost 
-              : (!content.trim() || isLoading || todaysPostCount >= 3 || !canPost)
+              ? !beatFile || isLoading || !canPost || (beatFile && (!beatMetadata.key.trim() || !beatMetadata.bpm.trim()))
+              : (!content.trim() || isLoading || todaysPostCount >= 3 || !canPost || (beatFile && (!beatMetadata.key.trim() || !beatMetadata.bpm.trim())))
           }
           className="btn-gradient"
         >

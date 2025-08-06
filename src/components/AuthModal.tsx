@@ -28,12 +28,69 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
     confirmPassword: '' 
   });
   const [passwordValidation, setPasswordValidation] = useState(validatePassword(''));
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [isSendingReset, setIsSendingReset] = useState(false);
   const { toast } = useToast();
 
   // Handle password validation in real-time
   const handlePasswordChange = (password: string) => {
     setSignupForm(prev => ({ ...prev, password }));
     setPasswordValidation(validatePassword(password));
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotPasswordEmail.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Rate limiting for password reset attempts
+    if (!rateLimiter.canAttempt('forgot-password', 3, 15 * 60 * 1000)) { // 3 attempts per 15 minutes
+      const remainingTime = Math.ceil(rateLimiter.getRemainingTime('forgot-password', 15 * 60 * 1000) / 1000 / 60);
+      toast({
+        title: "Too many reset attempts",
+        description: `Please wait ${remainingTime} minutes before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        toast({
+          title: "Password Reset Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for instructions to reset your password.",
+      });
+      
+      setShowForgotPassword(false);
+      setForgotPasswordEmail('');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingReset(false);
+    }
   };
 
   const handleLogin = async () => {
@@ -264,7 +321,11 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
             </div>
 
             <div className="text-center">
-              <Button variant="link" className="text-sm text-primary">
+              <Button 
+                variant="link" 
+                className="text-sm text-primary"
+                onClick={() => setShowForgotPassword(true)}
+              >
                 Forgot your password?
               </Button>
             </div>
@@ -404,18 +465,55 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
           </TabsContent>
         </Tabs>
 
+        {/* Forgot Password Dialog */}
+        {showForgotPassword && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+            <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm mx-4">
+              <div className="space-y-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold">Reset Password</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Enter your email address and we'll send you a link to reset your password.
+                  </p>
+                </div>
+                
+                <div>
+                  <Label htmlFor="forgot-email">Email Address</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    disabled={isSendingReset}
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setForgotPasswordEmail('');
+                    }}
+                    disabled={isSendingReset}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleForgotPassword}
+                    disabled={isSendingReset || !forgotPasswordEmail.trim()}
+                    className="flex-1 btn-gradient"
+                  >
+                    {isSendingReset ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-
-        <div className="text-center text-sm text-muted-foreground">
-          By signing up, you agree to our{' '}
-          <Button variant="link" className="p-0 h-auto text-sm text-primary">
-            Terms of Service
-          </Button>{' '}
-          and{' '}
-          <Button variant="link" className="p-0 h-auto text-sm text-primary">
-            Privacy Policy
-          </Button>
-        </div>
       </DialogContent>
     </Dialog>
   );

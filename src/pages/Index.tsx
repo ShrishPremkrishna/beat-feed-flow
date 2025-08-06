@@ -31,11 +31,7 @@ const Index = () => {
   const [chatUserId, setChatUserId] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [showLandingPopup, setShowLandingPopup] = useState(() => {
-    // Check if user has already seen the landing popup
-    const hasSeenLanding = localStorage.getItem('beatify-landing-seen');
-    return !hasSeenLanding;
-  });
+  const [showLandingPopup, setShowLandingPopup] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'home' | 'following'>('home');
 
@@ -173,6 +169,9 @@ const Index = () => {
       setUser(null);
       setSession(null);
       setUserProfile(null);
+      
+      // Clear landing popup preference so it shows for next visitor
+      localStorage.removeItem('beatify-landing-seen');
       
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut({ scope: 'global' });
@@ -322,8 +321,16 @@ const Index = () => {
   };
 
   const handleLandingPopupClose = () => {
+    console.log('Closing landing popup');
     setShowLandingPopup(false);
     localStorage.setItem('beatify-landing-seen', 'true');
+  };
+
+  // Debug function to reset landing popup
+  const resetLandingPopup = () => {
+    localStorage.removeItem('beatify-landing-seen');
+    setShowLandingPopup(true);
+    console.log('Reset landing popup');
   };
 
   const handleNotificationClick = (notification: Tables<'notifications'>) => {
@@ -369,6 +376,28 @@ const Index = () => {
       };
     }
   }, [user]);
+
+  // Show landing popup for non-authenticated users
+  useEffect(() => {
+    console.log('Landing popup check:', { loading, user: !!user, showLandingPopup });
+    
+    if (!loading && !user) {
+      // Check if user has already seen the landing popup
+      const hasSeenLanding = localStorage.getItem('beatify-landing-seen');
+      console.log('Has seen landing:', hasSeenLanding);
+      
+      if (!hasSeenLanding) {
+        console.log('Showing landing popup');
+        setShowLandingPopup(true);
+      } else {
+        console.log('User has already seen landing popup');
+      }
+    } else if (user) {
+      // Hide landing popup if user is authenticated
+      console.log('User is authenticated, hiding landing popup');
+      setShowLandingPopup(false);
+    }
+  }, [loading, user]);
 
   const loadUnreadNotificationsCount = async () => {
     if (!user) return;
@@ -538,8 +567,8 @@ const Index = () => {
         </div>
       )}
       
-      <main className={showChat ? "flex-1 flex flex-col" : "pt-4 px-4 max-w-4xl mx-auto"}>
-        <div className={showChat ? "flex-1" : "space-y-4"}>
+      <main className={showChat ? "flex-1 flex flex-col" : "pt-2 px-2 sm:pt-4 sm:px-4 max-w-4xl mx-auto min-h-screen"}>
+        <div className={showChat ? "flex-1" : "space-y-4 pb-20"}>
           {renderContent()}
         </div>
       </main>
@@ -553,6 +582,7 @@ const Index = () => {
       />
 
       {/* Landing Popup */}
+      {console.log('Rendering LandingPopup with isOpen:', showLandingPopup)}
       <LandingPopup
         isOpen={showLandingPopup}
         onClose={handleLandingPopupClose}

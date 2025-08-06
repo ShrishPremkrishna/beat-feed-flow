@@ -8,7 +8,14 @@ interface LandingPopupProps {
 }
 
 export const LandingPopup = ({ isOpen, onClose }: LandingPopupProps) => {
-  if (!isOpen) return null;
+  console.log('LandingPopup render:', { isOpen });
+  
+  if (!isOpen) {
+    console.log('LandingPopup not open, returning null');
+    return null;
+  }
+
+  console.log('LandingPopup rendering...');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
