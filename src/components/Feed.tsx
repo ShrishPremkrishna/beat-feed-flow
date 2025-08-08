@@ -18,15 +18,24 @@ interface FeedProps {
 export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, activeTab = 'home', onTabChange, onSignIn }: FeedProps) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
+  
+  const POSTS_PER_PAGE = 10;
 
   useEffect(() => {
     console.log('Tab changed to:', activeTab);
     checkAuthStatus();
-    loadPosts();
+    // Reset pagination when tab changes
+    setCurrentPage(0);
+    setPosts([]);
+    setHasMore(true);
+    loadPosts(true);
   }, [activeTab]); // Reload posts when tab changes
 
   const checkAuthStatus = async () => {
@@ -36,8 +45,17 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
     setIsAuthenticated(authenticated);
   };
 
-  const loadPosts = async () => {
-    console.log('loadPosts called with activeTab:', activeTab);
+  const loadPosts = async (isInitialLoad = false) => {
+    console.log('loadPosts called with activeTab:', activeTab, 'isInitialLoad:', isInitialLoad);
+    
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    
+    const pageToLoad = isInitialLoad ? 0 : currentPage;
+    const offset = pageToLoad * POSTS_PER_PAGE;
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
@@ -64,7 +82,8 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
               .from('posts')
               .select('*')
               .in('user_id', followingIds)
-              .order('created_at', { ascending: false });
+              .order('created_at', { ascending: false })
+              .range(offset, offset + POSTS_PER_PAGE - 1);
             
             if (followedError) throw followedError;
             postsData = followedPosts || [];
@@ -78,11 +97,15 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
         const { data: allPosts, error: postsError } = await supabase
           .from('posts')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .range(offset, offset + POSTS_PER_PAGE - 1);
 
         if (postsError) throw postsError;
         postsData = allPosts;
       }
+      
+      // Check if we have more posts to load
+      setHasMore(postsData && postsData.length === POSTS_PER_PAGE);
 
       // Get unique user IDs from posts
       const postUserIds = postsData?.map(post => post.user_id) || [];
@@ -150,7 +173,14 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
 
       // Set the transformed posts
       console.log('Setting posts:', transformedPosts.length, 'activeTab:', activeTab, 'isAuthenticated:', isAuthenticated);
-      setPosts(transformedPosts);
+      
+      if (isInitialLoad) {
+        setPosts(transformedPosts);
+        setCurrentPage(1);
+      } else {
+        setPosts(prev => [...prev, ...transformedPosts]);
+        setCurrentPage(prev => prev + 1);
+      }
 
     } catch (error) {
       console.error('Error loading data:', error);
@@ -162,7 +192,11 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
   };
 
@@ -180,6 +214,10 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
       timestamp: post.timestamp || 'just now'
     };
     setPosts(prev => [normalizedPost, ...prev]);
+  };
+  
+  const handleLoadMore = () => {
+    loadPosts(false);
   };
 
   const handleLike = async (postId: string) => {
@@ -215,7 +253,10 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
       }
       
       // Reload posts to get accurate like counts from database
-      await loadPosts();
+      setCurrentPage(0);
+      setPosts([]);
+      setHasMore(true);
+      await loadPosts(true);
     } catch (error) {
       console.error('Error toggling like:', error);
       toast({
@@ -292,7 +333,13 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
                 onComment={() => console.log('Comment on post', post.id)}
                 onShare={() => handleShare(post.id)}
                 onPostClick={() => onPostDetailView?.(post.id)}
-                onDelete={() => loadPosts()} // Reload posts when one is deleted
+                onDelete={() => {
+                  // Reload posts when one is deleted
+                  setCurrentPage(0);
+                  setPosts([]);
+                  setHasMore(true);
+                  loadPosts(true);
+                }} // Reload posts when one is deleted
                 onUserProfileClick={onUserProfileClick}
                 onSignIn={onSignIn}
               />
@@ -300,8 +347,20 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
           ))
         )}
       </div>
-
-
+      
+      {/* Load More Button */}
+      {!loading && posts.length > 0 && hasMore && (
+        <div className="text-center py-6">
+          <Button 
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            variant="outline"
+            className="min-w-[140px]"
+          >
+            {loadingMore ? 'Loading...' : 'Load More Posts'}
+          </Button>
+        </div>
+      )}
 
       {/* Share Modal */}
       <ShareModal
