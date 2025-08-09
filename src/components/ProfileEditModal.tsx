@@ -62,7 +62,7 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       // Rate limiting for file uploads
-      if (!rateLimiter.canAttempt('avatar_upload', 5, 60 * 60 * 1000)) { // 5 uploads per hour
+      if (!rateLimiter.canAttemptSync('avatar_upload', 5, 60 * 60 * 1000)) { // 5 uploads per hour
         const remainingTime = Math.ceil(rateLimiter.getRemainingTime('avatar_upload', 60 * 60 * 1000) / 1000 / 60);
         toast({
           title: "Upload limit reached",
@@ -217,7 +217,7 @@ export const ProfileEditModal = ({ isOpen, onClose, currentProfile, onProfileUpd
     }
 
     // Rate limiting for profile updates
-    if (!rateLimiter.canAttempt('profile_update', 10, 60 * 60 * 1000)) { // 10 updates per hour
+    if (!rateLimiter.canAttemptSync('profile_update', 10, 60 * 60 * 1000)) { // 10 updates per hour
       const remainingTime = Math.ceil(rateLimiter.getRemainingTime('profile_update', 60 * 60 * 1000) / 1000 / 60);
       toast({
         title: "Update limit reached",

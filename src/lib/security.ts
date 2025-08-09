@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify';
 import validator from 'validator';
+import { supabase } from '@/integrations/supabase/client';
 
 // Password strength validation
 export interface PasswordValidation {
@@ -220,11 +221,144 @@ export const validateImageFile = async (file: File, maxSizeMB: number = 5): Prom
   });
 };
 
-// Rate limiting helper (simple client-side tracking)
+/**
+ * Server-side rate limiting integration
+ */
+export async function checkRateLimit(
+  userIdentifier: string, 
+  actionType: string, 
+  maxAttempts: number = 10, 
+  windowMinutes: number = 15
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.functions.invoke('rate-limiting', {
+      body: {
+        user_identifier: userIdentifier,
+        action_type: actionType,
+        max_attempts: maxAttempts,
+        window_minutes: windowMinutes
+      }
+    });
+
+    if (error) {
+      console.error('Rate limit check failed:', error);
+      // Fail open in case of service issues, but log the attempt
+      await logSecurityEvent('RATE_LIMIT_CHECK_FAILED', `Failed to check rate limit for ${actionType}`, userIdentifier, { error: error.message });
+      return true;
+    }
+
+    if (!data?.allowed) {
+      await logSecurityEvent('RATE_LIMIT_EXCEEDED', `Rate limit exceeded for ${actionType}`, userIdentifier, { maxAttempts, windowMinutes });
+    }
+
+    return data?.allowed || false;
+  } catch (error) {
+    console.error('Rate limit service error:', error);
+    // Fail open but log the attempt
+    await logSecurityEvent('RATE_LIMIT_SERVICE_ERROR', `Rate limit service error for ${actionType}`, userIdentifier, { error: error instanceof Error ? error.message : 'Unknown error' });
+    return true;
+  }
+}
+
+/**
+ * Security event logging
+ */
+export async function logSecurityEvent(
+  eventType: string,
+  description: string,
+  userIdentifier?: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('log_security_event', {
+      event_type: eventType,
+      event_description: description,
+      user_identifier: userIdentifier || null,
+      metadata: metadata || {}
+    });
+
+    if (error) {
+      console.error('Failed to log security event:', error);
+    }
+  } catch (error) {
+    console.error('Security logging error:', error);
+  }
+}
+
+/**
+ * Enhanced input validation with security logging
+ */
+export function validateAndSanitizeInput(input: string, maxLength: number = 1000, fieldName: string = 'input'): { isValid: boolean; sanitized: string; errors: string[] } {
+  const errors: string[] = [];
+  let sanitized = input;
+
+  // Length validation
+  if (input.length > maxLength) {
+    errors.push(`${fieldName} exceeds maximum length of ${maxLength} characters`);
+    logSecurityEvent('INPUT_LENGTH_EXCEEDED', `Input length exceeded for ${fieldName}`, undefined, { length: input.length, maxLength });
+  }
+
+  // Check for potential XSS attempts
+  const originalLength = input.length;
+  sanitized = sanitizeText(input);
+  
+  if (sanitized.length !== originalLength) {
+    errors.push(`${fieldName} contains potentially harmful content`);
+    logSecurityEvent('XSS_ATTEMPT_DETECTED', `Potential XSS attempt in ${fieldName}`, undefined, { original: input.substring(0, 100) });
+  }
+
+  // Check for SQL injection patterns
+  const sqlPatterns = [
+    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/gi,
+    /(--|\/\*|\*\/)/g,
+    /(\bOR\b.*=.*|AND.*=.*)/gi
+  ];
+
+  for (const pattern of sqlPatterns) {
+    if (pattern.test(input)) {
+      errors.push(`${fieldName} contains potentially harmful SQL patterns`);
+      logSecurityEvent('SQL_INJECTION_ATTEMPT', `Potential SQL injection attempt in ${fieldName}`, undefined, { pattern: pattern.source });
+      break;
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    sanitized,
+    errors
+  };
+}
+
+// Rate limiting helper (enhanced with server-side integration)
 class RateLimiter {
   private attempts: Map<string, number[]> = new Map();
   
-  canAttempt(key: string, maxAttempts: number, windowMs: number): boolean {
+  async canAttempt(key: string, actionType: string, maxAttempts: number, windowMs: number): Promise<boolean> {
+    // First check server-side rate limiting
+    const serverAllowed = await checkRateLimit(key, actionType, maxAttempts, Math.ceil(windowMs / 60000));
+    if (!serverAllowed) {
+      return false;
+    }
+
+    // Then apply client-side rate limiting as backup
+    const now = Date.now();
+    const attempts = this.attempts.get(key) || [];
+    
+    // Remove expired attempts
+    const validAttempts = attempts.filter(time => now - time < windowMs);
+    
+    if (validAttempts.length >= maxAttempts) {
+      await logSecurityEvent('CLIENT_RATE_LIMIT_EXCEEDED', `Client-side rate limit exceeded for ${actionType}`, key, { maxAttempts, windowMs });
+      return false;
+    }
+    
+    validAttempts.push(now);
+    this.attempts.set(key, validAttempts);
+    return true;
+  }
+
+  // Legacy sync method for backward compatibility
+  canAttemptSync(key: string, maxAttempts: number, windowMs: number): boolean {
     const now = Date.now();
     const attempts = this.attempts.get(key) || [];
     

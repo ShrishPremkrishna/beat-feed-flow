@@ -372,6 +372,30 @@ export type Database = {
           },
         ]
       }
+      notification_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          subscribed_to_id: string
+          subscriber_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          subscribed_to_id: string
+          subscriber_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          subscribed_to_id?: string
+          subscriber_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           action_url: string | null
@@ -556,11 +580,41 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          identifier: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          identifier: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          identifier?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          user_identifier: string
+          action_type: string
+          max_attempts?: number
+          window_minutes?: number
+        }
+        Returns: boolean
+      }
       create_notification: {
         Args: {
           recipient_user_id: string
@@ -576,6 +630,19 @@ export type Database = {
         }
         Returns: string
       }
+      is_subscribed_to_user: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      log_security_event: {
+        Args: {
+          event_type: string
+          event_description: string
+          user_identifier?: string
+          metadata?: Json
+        }
+        Returns: string
+      }
       mark_all_notifications_read: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -583,6 +650,10 @@ export type Database = {
       mark_notification_read: {
         Args: { notification_id: string }
         Returns: undefined
+      }
+      toggle_notification_subscription: {
+        Args: { target_user_id: string }
+        Returns: boolean
       }
       validate_filename: {
         Args: { filename: string }

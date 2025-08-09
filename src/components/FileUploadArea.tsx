@@ -54,7 +54,7 @@ export const FileUploadArea = ({
 
   const handleFileSelect = (file: File) => {
     // Rate limiting for file uploads
-    if (!rateLimiter.canAttempt('file_upload', 10, 60 * 60 * 1000)) { // 10 uploads per hour
+    if (!rateLimiter.canAttemptSync('file_upload', 10, 60 * 60 * 1000)) { // 10 uploads per hour
       const remainingTime = Math.ceil(rateLimiter.getRemainingTime('file_upload', 60 * 60 * 1000) / 1000 / 60);
       toast({
         title: "Upload limit reached",

@@ -50,7 +50,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
     }
 
     // Rate limiting for password reset attempts
-    if (!rateLimiter.canAttempt('forgot-password', 3, 15 * 60 * 1000)) { // 3 attempts per 15 minutes
+    if (!rateLimiter.canAttemptSync('forgot-password', 3, 15 * 60 * 1000)) { // 3 attempts per 15 minutes
       const remainingTime = Math.ceil(rateLimiter.getRemainingTime('forgot-password', 15 * 60 * 1000) / 1000 / 60);
       toast({
         title: "Too many reset attempts",
@@ -95,7 +95,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
 
   const handleLogin = async () => {
     // Rate limiting for login attempts
-    if (!rateLimiter.canAttempt('login', 5, 15 * 60 * 1000)) { // 5 attempts per 15 minutes
+    if (!rateLimiter.canAttemptSync('login', 5, 15 * 60 * 1000)) { // 5 attempts per 15 minutes
       const remainingTime = Math.ceil(rateLimiter.getRemainingTime('login', 15 * 60 * 1000) / 1000 / 60);
       toast({
         title: "Too many login attempts",
@@ -169,7 +169,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
     }
 
     // Rate limiting for signup attempts
-    if (!rateLimiter.canAttempt('signup', 3, 60 * 60 * 1000)) { // 3 attempts per hour
+    if (!rateLimiter.canAttemptSync('signup', 3, 60 * 60 * 1000)) { // 3 attempts per hour
       const remainingTime = Math.ceil(rateLimiter.getRemainingTime('signup', 60 * 60 * 1000) / 1000 / 60);
       toast({
         title: "Too many signup attempts",
