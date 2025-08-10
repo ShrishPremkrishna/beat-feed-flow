@@ -52,6 +52,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sortBy, setSortBy] = useState<'likes' | 'recent' | 'my_likes'>('likes');
   const [downloadStatus, setDownloadStatus] = useState<{[key: string]: boolean}>({});
+  const [showAllReplies, setShowAllReplies] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -641,7 +642,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
               </SelectContent>
             </Select>
           </div>
-          {replies.slice(0, 1).map((reply, index) => {
+          {(showAllReplies ? replies : replies.slice(0, 1)).map((reply, index) => {
             const isReplyOwner = currentUser && currentUser.id === reply.user_id;
             
             return (
@@ -792,7 +793,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
             );
           })}
           
-          {/* See More Button */}
+          {/* See More/Less Button */}
           {replies.length > 1 && (
             <div className="text-center pt-4">
               <Button
@@ -800,11 +801,14 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onPostClick?.();
+                  setShowAllReplies(!showAllReplies);
                 }}
                 className="text-primary hover:text-primary/80"
               >
-                See More Replies ({replies.length - 3} more)
+                {showAllReplies 
+                  ? "Show Less Replies" 
+                  : `See More Replies (${replies.length - 1} more)`
+                }
               </Button>
             </div>
           )}
