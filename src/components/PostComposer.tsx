@@ -248,10 +248,10 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       }
 
       // Check daily post limit for regular posts (not replies)
-      if (!isReply && todaysPostCount >= 3) {
+      if (!isReply && todaysPostCount >= 1) {
         toast({
           title: "Daily Post Limit Reached",
-          description: "You can only post 3 times per day. This resets at midnight in your timezone.",
+          description: "You can only post 1 time per day. This resets at midnight in your timezone.",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -460,9 +460,9 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       {!isReply && todaysPostCount > 0 && (
         <div className="bg-muted/50 border border-border rounded-lg p-3 text-center">
           <p className="text-sm text-muted-foreground">
-            {todaysPostCount >= 3 
-              ? "You've reached your daily limit of 3 posts. You can post again at midnight in your timezone."
-              : `You've posted ${todaysPostCount}/3 times today.`
+            {todaysPostCount >= 1 
+              ? "You've reached your daily limit of 1 post. You can post again at midnight in your timezone."
+              : `You've posted ${todaysPostCount}/1 times today.`
             }
           </p>
         </div>
@@ -663,7 +663,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
           disabled={
             isReply 
               ? !beatFile || isLoading || !canPost || (beatFile && (!beatMetadata.key.trim() || !beatMetadata.bpm.trim()))
-              : (!content.trim() || isLoading || todaysPostCount >= 3 || !canPost || (beatFile && (!beatMetadata.key.trim() || !beatMetadata.bpm.trim())))
+              : (!content.trim() || isLoading || todaysPostCount >= 1 || !canPost || (beatFile && (!beatMetadata.key.trim() || !beatMetadata.bpm.trim())))
           }
           className="btn-gradient"
         >
@@ -675,7 +675,7 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
                 ? 'Uploading...' 
                 : !canPost 
                   ? 'Processing...' 
-                  : (isReply ? 'Reply with Beat' : todaysPostCount >= 3 ? `Daily Limit Reached (${todaysPostCount}/3)` : `Post (${todaysPostCount}/3)`)
+                  : (isReply ? 'Reply with Beat' : todaysPostCount >= 1 ? `Daily Limit Reached (${todaysPostCount}/1)` : `Post (${todaysPostCount}/1)`)
           }
         </Button>
       </div>
