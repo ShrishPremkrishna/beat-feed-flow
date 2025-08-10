@@ -330,28 +330,6 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
           </TabsList>
 
           <TabsContent value="login" className="space-y-4">
-            {/* Google Sign-In Button */}
-            <div className="space-y-4">
-              <Button 
-                onClick={handleGoogleSignIn}
-                variant="outline"
-                className="w-full flex items-center gap-3 py-6 border-2 border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50 transition-all duration-200"
-                disabled={isLoading}
-              >
-                <GoogleIcon size={20} />
-                <span className="font-medium">Continue with Google</span>
-              </Button>
-              
-              <div className="relative">
-                <Separator className="my-6" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="bg-background px-3 text-sm text-muted-foreground">
-                    or continue with email
-                  </span>
-                </div>
-              </div>
-            </div>
-
             <div className="space-y-4">
               <div>
                 <Label htmlFor="login-email">Email</Label>
@@ -402,6 +380,28 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
                 onClick={() => setShowForgotPassword(true)}
               >
                 Forgot your password?
+              </Button>
+            </div>
+
+            {/* Google Sign-In Button - Moved to bottom */}
+            <div className="space-y-4">
+              <div className="relative">
+                <Separator className="my-6" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="bg-background px-3 text-sm text-muted-foreground">
+                    or continue with
+                  </span>
+                </div>
+              </div>
+              
+              <Button 
+                onClick={handleGoogleSignIn}
+                variant="outline"
+                className="w-full flex items-center gap-3 py-6 border-2 border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50 transition-all duration-200"
+                disabled={isLoading}
+              >
+                <GoogleIcon size={20} />
+                <span className="font-medium">Continue with Google</span>
               </Button>
             </div>
           </TabsContent>
