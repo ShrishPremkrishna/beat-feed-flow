@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { validatePassword, rateLimiter, sanitizeText } from '@/lib/security';
+import { GoogleIcon } from '@/components/ui/brand-icons';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -253,6 +254,58 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    // Rate limiting for Google sign-in attempts
+    if (!rateLimiter.canAttempt('google-signin', 5, 15 * 60 * 1000)) { // 5 attempts per 15 minutes
+      const remainingTime = Math.ceil(rateLimiter.getRemainingTime('google-signin', 15 * 60 * 1000) / 1000 / 60);
+      toast({
+        title: "Too many sign-in attempts",
+        description: `Please wait ${remainingTime} minutes before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Google Sign-In Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // The redirect will handle the rest of the authentication flow
+      toast({
+        title: "Redirecting to Google...",
+        description: "You'll be redirected to Google to complete sign-in.",
+      });
+
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred with Google sign-in.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md bg-card border-2 border-primary/20 fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] z-[9999]">
@@ -277,6 +330,28 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
           </TabsList>
 
           <TabsContent value="login" className="space-y-4">
+            {/* Google Sign-In Button */}
+            <div className="space-y-4">
+              <Button 
+                onClick={handleGoogleSignIn}
+                variant="outline"
+                className="w-full flex items-center gap-3 py-6 border-2 border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50 transition-all duration-200"
+                disabled={isLoading}
+              >
+                <GoogleIcon size={20} />
+                <span className="font-medium">Continue with Google</span>
+              </Button>
+              
+              <div className="relative">
+                <Separator className="my-6" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="bg-background px-3 text-sm text-muted-foreground">
+                    or continue with email
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <Label htmlFor="login-email">Email</Label>
@@ -332,6 +407,28 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
           </TabsContent>
 
           <TabsContent value="signup" className="space-y-4">
+            {/* Google Sign-Up Button */}
+            <div className="space-y-4">
+              <Button 
+                onClick={handleGoogleSignIn}
+                variant="outline"
+                className="w-full flex items-center gap-3 py-6 border-2 border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50 transition-all duration-200"
+                disabled={isLoading}
+              >
+                <GoogleIcon size={20} />
+                <span className="font-medium">Sign up with Google</span>
+              </Button>
+              
+              <div className="relative">
+                <Separator className="my-6" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="bg-background px-3 text-sm text-muted-foreground">
+                    or create account with email
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <Label htmlFor="signup-username">Username</Label>

@@ -130,6 +130,13 @@ const Index = () => {
       
       if (error) {
         console.error('Error fetching profile:', error);
+        
+        // If profile doesn't exist (especially for Google OAuth users), create one
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, creating one for Google OAuth user');
+          await createProfileForGoogleUser(userId);
+          return;
+        }
         return;
       }
       
@@ -138,6 +145,70 @@ const Index = () => {
       console.error('Error:', error);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const createProfileForGoogleUser = async (userId: string) => {
+    try {
+      // Get user data from auth
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Extract info from Google OAuth metadata
+      const fullName = user.user_metadata?.full_name || user.user_metadata?.name || 'Google User';
+      const email = user.email || '';
+      const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+      
+      // Generate username from email or full name
+      let username = '';
+      if (email) {
+        username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+      } else {
+        username = fullName.toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+      }
+      
+      // Ensure username is unique by checking existing usernames
+      let finalUsername = username;
+      let counter = 1;
+      
+      while (true) {
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('username', finalUsername)
+          .single();
+          
+        if (!existingProfile) break;
+        finalUsername = `${username}${counter}`;
+        counter++;
+      }
+
+      // Create the profile
+      const { data: newProfile, error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: userId,
+          username: finalUsername,
+          display_name: fullName,
+          avatar_url: avatarUrl,
+          email: email,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Error creating Google OAuth profile:', profileError);
+        return;
+      }
+
+      console.log('Profile created successfully for Google OAuth user');
+      setUserProfile(newProfile);
+      
+    } catch (error) {
+      console.error('Error creating profile for Google user:', error);
     }
   };
 
