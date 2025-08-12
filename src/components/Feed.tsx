@@ -230,6 +230,19 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
     const post = posts.find(p => p.id === postId);
     const isCurrentlyLiked = post?.isLiked;
 
+    // Optimistic update - immediately update the UI
+    setPosts(prevPosts => 
+      prevPosts.map(p => 
+        p.id === postId 
+          ? { 
+              ...p, 
+              isLiked: !isCurrentlyLiked,
+              likes: isCurrentlyLiked ? p.likes - 1 : p.likes + 1
+            }
+          : p
+      )
+    );
+
     try {
       if (isCurrentlyLiked) {
         // Unlike the post
@@ -252,13 +265,23 @@ export const Feed = ({ highlightedPostId, onPostDetailView, onUserProfileClick, 
         if (insertError) throw insertError;
       }
       
-      // Reload posts to get accurate like counts from database
-      setCurrentPage(0);
-      setPosts([]);
-      setHasMore(true);
-      await loadPosts(true);
+      // No need to reload posts - optimistic update already handled it
     } catch (error) {
       console.error('Error toggling like:', error);
+      
+      // Revert optimistic update on error
+      setPosts(prevPosts => 
+        prevPosts.map(p => 
+          p.id === postId 
+            ? { 
+                ...p, 
+                isLiked: isCurrentlyLiked,
+                likes: isCurrentlyLiked ? p.likes : p.likes - 1
+              }
+            : p
+        )
+      );
+      
       toast({
         title: 'Error',
         description: 'Failed to toggle like',

@@ -17,6 +17,16 @@ import {
   getCompressionOptions,
   isAudioCompressionSupported 
 } from '@/lib/audio-compression';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// We'll use the Librosa backend instead of client-side analysis
+interface AudioAnalysisResult {
+  bpm: number;
+  key: string;
+  confidence: number;
+  sample_rate?: number;
+  duration?: number;
+  analysis_method?: string;
+}
 
 interface PostComposerProps {
   onPost: (post: any) => void;
@@ -46,7 +56,28 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [canPost, setCanPost] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
   const { toast } = useToast();
+
+  // Musical keys array for the dropdown - following standard music theory
+  const musicalKeys = [
+    'C Major', 'A Minor',
+    'G Major', 'E Minor',
+    'D Major', 'B Minor',
+    'A Major', 'F# Minor',
+    'E Major', 'C# Minor',
+    'B Major', 'G# Minor',
+    'F# Major', 'D# Minor',
+    'C# Major', 'A# Minor',
+    'F Major', 'D Minor',
+    'Bb Major', 'G Minor',
+    'Eb Major', 'C Minor',
+    'Ab Major', 'F Minor',
+    'Db Major', 'Bb Minor',
+    'Gb Major', 'Eb Minor',
+    'Cb Major', 'Ab Minor'
+  ];
 
   // Load user profile data
   useEffect(() => {
@@ -189,6 +220,89 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       }
     } else {
       setCoverArt(file);
+    }
+  };
+
+  const handleAutoAnalyze = async () => {
+    if (!beatFile) {
+      toast({
+        title: "No beat file",
+        description: "Please upload a beat file first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+      setAnalysisProgress(0);
+
+      // Real progress updates for Librosa analysis
+      const progressInterval = setInterval(() => {
+        setAnalysisProgress(prev => {
+          if (prev >= 85) {
+            clearInterval(progressInterval);
+            return 85;
+          }
+          return prev + 5;
+        });
+      }, 300);
+
+      // Call the Librosa backend API
+      const formData = new FormData();
+      formData.append('file', beatFile);
+
+      const response = await fetch('http://localhost:8000/analyze-audio', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.statusText}`);
+      }
+
+      const result: AudioAnalysisResult = await response.json();
+      
+      // Debug logging
+      console.log('Librosa API Response:', result);
+      console.log('BPM:', result.bpm, 'Key:', result.key);
+      
+      clearInterval(progressInterval);
+      setAnalysisProgress(100);
+
+      // Validate and update the form with detected values
+      const validatedBPM = Math.max(60, Math.min(200, result.bpm)); // Clamp BPM to reasonable range
+      const validatedKey = result.key || 'C Major'; // Fallback key if detection fails
+      
+      console.log('Setting metadata:', { bpm: validatedBPM.toString(), key: validatedKey });
+      
+      setBeatMetadata(prev => ({
+        ...prev,
+        bpm: validatedBPM.toString(),
+        key: validatedKey
+      }));
+
+      toast({
+        title: "Analysis Complete!",
+        description: `Detected: ${validatedBPM} BPM, ${validatedKey}`,
+      });
+
+
+
+      // Reset progress after a short delay
+      setTimeout(() => {
+        setAnalysisProgress(0);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Audio analysis error:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "Could not analyze the audio file. Please enter BPM and key manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -569,6 +683,51 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
             </Button>
           </div>
 
+          {/* Auto-Analysis Button */}
+          <div className="md:col-span-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAutoAnalyze}
+              disabled={isAnalyzing || !beatFile}
+              className="w-full"
+            >
+              {isAnalyzing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                  Analyzing Audio...
+                </>
+              ) : (
+                <>
+                  <Music className="w-4 h-4 mr-2" />
+                  Auto Analyze Key & BPM
+                </>
+              )}
+            </Button>
+            
+            {/* Analysis Progress */}
+            {isAnalyzing && (
+              <div className="mt-2">
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${analysisProgress}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                  Analyzing audio...
+                </p>
+              </div>
+            )}
+            
+            {/* Simple Info Text */}
+            <div className="text-center mt-2">
+              <p className="text-xs text-muted-foreground">
+                Auto analyze key and BPM from your audio file
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="beat-title">Beat Title</Label>
@@ -581,7 +740,9 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
             </div>
 
             <div>
-              <Label htmlFor="bpm">BPM <span className="text-red-500">*</span></Label>
+              <Label htmlFor="bpm">
+                BPM <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="bpm"
                 type="number"
@@ -589,18 +750,30 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
                 onChange={(e) => setBeatMetadata(prev => ({ ...prev, bpm: e.target.value }))}
                 placeholder="120"
                 required
+
               />
             </div>
 
             <div>
-              <Label htmlFor="key">Key <span className="text-red-500">*</span></Label>
-              <Input
-                id="key"
+              <Label htmlFor="key">
+                Key <span className="text-red-500">*</span>
+
+              </Label>
+              <Select
                 value={beatMetadata.key}
-                onChange={(e) => setBeatMetadata(prev => ({ ...prev, key: e.target.value }))}
-                placeholder="C Major"
-                required
-              />
+                onValueChange={(value) => setBeatMetadata(prev => ({ ...prev, key: value }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select key" />
+                </SelectTrigger>
+                <SelectContent>
+                  {musicalKeys.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {key}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="md:col-span-2">

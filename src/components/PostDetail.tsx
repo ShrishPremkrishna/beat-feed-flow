@@ -402,6 +402,19 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
       return;
     }
 
+    // Optimistic update - immediately update the UI
+    setReplies(prevReplies => 
+      prevReplies.map(reply => 
+        reply.id === replyId 
+          ? { 
+              ...reply, 
+              isLiked: !isCurrentlyLiked,
+              likes: isCurrentlyLiked ? (reply.likes || 0) - 1 : (reply.likes || 0) + 1
+            }
+          : reply
+      )
+    );
+
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
@@ -420,12 +433,23 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
           });
       }
       
-      // Reload replies to get accurate like counts from database
-      await loadReplies();
-
+      // No need to reload replies - optimistic update already handled it
     } catch (error) {
-      
       console.error('Error toggling reply like:', error);
+      
+      // Revert optimistic update on error
+      setReplies(prevReplies => 
+        prevReplies.map(reply => 
+          reply.id === replyId 
+            ? { 
+                ...reply, 
+                isLiked: isCurrentlyLiked,
+                likes: isCurrentlyLiked ? (reply.likes || 0) : (reply.likes || 0) - 1
+              }
+            : reply
+        )
+      );
+      
       toast({
         title: 'Error',
         description: 'Failed to toggle like',
@@ -494,6 +518,15 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
     const isCurrentlyLiked = post?.isLiked;
     console.log('isCurrentlyLiked:', isCurrentlyLiked);
 
+    // Optimistic update - immediately update the UI
+    setPost(prevPost => 
+      prevPost ? {
+        ...prevPost,
+        isLiked: !isCurrentlyLiked,
+        likes: isCurrentlyLiked ? prevPost.likes - 1 : prevPost.likes + 1
+      } : null
+    );
+
     try {
       if (isCurrentlyLiked) {
         // Unlike the post
@@ -520,10 +553,19 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
         console.log('Like inserted successfully');
       }
       
-      // Reload post detail to get accurate like counts from database (without showing loading)
-      await loadPostDetail(false);
+      // No need to reload post detail - optimistic update already handled it
     } catch (error) {
       console.error('Error toggling post like:', error);
+      
+      // Revert optimistic update on error
+      setPost(prevPost => 
+        prevPost ? {
+          ...prevPost,
+          isLiked: isCurrentlyLiked,
+          likes: isCurrentlyLiked ? prevPost.likes : prevPost.likes - 1
+        } : null
+      );
+      
       toast({
         title: 'Error',
         description: 'Failed to toggle like',
