@@ -365,6 +365,21 @@ export const Chat = ({ onBack, initialConversationId, initialUserId }: ChatProps
 
           if (convError) throw convError;
           conversationId = newConversation.id;
+          
+          // Add the new conversation to the conversations list
+          const newConversationWithProfile = {
+            id: newConversation.id,
+            user1_id: newConversation.user1_id,
+            user2_id: newConversation.user2_id,
+            last_message: null,
+            last_message_at: null,
+            last_message_by: null,
+            updated_at: newConversation.created_at,
+            other_user: selectedConversation.other_user,
+            unread_count: 0
+          };
+          
+          setConversations(prev => [newConversationWithProfile, ...prev]);
         }
 
         // Update selected conversation with real ID
@@ -388,8 +403,29 @@ export const Chat = ({ onBack, initialConversationId, initialUserId }: ChatProps
       setMessages(prev => [...prev, messageData]);
       setNewMessage('');
 
-      // Reload conversations to update last message
-      loadConversations();
+      // Update conversation locally instead of reloading everything
+      if (selectedConversation) {
+        setConversations(prev => prev.map(conv => 
+          conv.id === conversationId 
+            ? { 
+                ...conv, 
+                last_message: messageData.content,
+                last_message_at: messageData.created_at,
+                last_message_by: currentUser.id,
+                updated_at: messageData.created_at
+              }
+            : conv
+        ));
+        
+        // Also update the selected conversation
+        setSelectedConversation(prev => prev ? {
+          ...prev,
+          last_message: messageData.content,
+          last_message_at: messageData.created_at,
+          last_message_by: currentUser.id,
+          updated_at: messageData.created_at
+        } : null);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       toast({

@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2 } from 'lucide-react';
+import { Play, Pause, Volume2, RotateCcw } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
+import { AudioWaveform } from './AudioWaveform';
+import { useAudioManager } from '@/hooks/use-audio-manager';
 
 interface BeatPlayerProps {
   audioUrl: string;
@@ -28,6 +30,8 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(100);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const { setCurrentlyPlayingAudio, currentlyPlayingId } = useAudioManager();
+  const playerId = useId(); // Generate unique ID for this player
   
 
   useEffect(() => {
@@ -36,7 +40,10 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
 
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
-    const handleEnded = () => setIsPlaying(false);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentlyPlayingAudio(null, null);
+    };
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
@@ -47,17 +54,43 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [setCurrentlyPlayingAudio]);
+
+  // Listen for when other players start playing
+  useEffect(() => {
+    if (currentlyPlayingId && currentlyPlayingId !== playerId && isPlaying) {
+      // Another player is playing, stop this one
+      setIsPlaying(false);
+    }
+  }, [currentlyPlayingId, playerId, isPlaying]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
 
     if (isPlaying) {
+      // Stop this beat
       audioRef.current.pause();
+      setIsPlaying(false);
+      setCurrentlyPlayingAudio(null, null);
     } else {
+      // Play this beat (audio manager will stop others automatically)
+      audioRef.current.play();
+      setIsPlaying(true);
+      setCurrentlyPlayingAudio(audioRef.current, playerId);
+    }
+  };
+
+  const restartBeat = () => {
+    if (!audioRef.current) return;
+    
+    // Reset to beginning
+    audioRef.current.currentTime = 0;
+    setCurrentTime(0);
+    
+    // If it's currently playing, restart it
+    if (isPlaying) {
       audioRef.current.play();
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (value: number[]) => {
@@ -116,17 +149,20 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
       </div>
 
       {/* Player Controls */}
-      <div className="space-y-2">
-        {/* Progress Bar */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}>
-          <span>{formatTime(currentTime)}</span>
-          <Slider
-            value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
-            onValueChange={handleSeek}
-            className="flex-1"
-            max={100}
-            step={0.1}
+      <div className="space-y-3">
+        {/* Waveform Visualization */}
+        <div className="w-full" onClick={(e) => e.stopPropagation()}>
+          <AudioWaveform
+            audioRef={audioRef}
+            height={50}
+            activeColor="hsl(180 100% 50%)"
+            inactiveColor="hsl(0 0% 20%)"
           />
+        </div>
+
+        {/* Times (optional) */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+          <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
 
@@ -150,6 +186,20 @@ export const BeatPlayer: React.FC<BeatPlayerProps> = ({
             ) : (
               <Play className="h-4 w-4 ml-0.5" />
             )}
+          </Button>
+
+          {/* Restart Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              restartBeat();
+            }}
+            className="h-10 w-10 p-0 rounded-full transition-all duration-300 hover:bg-primary/20 border border-primary/30"
+            title="Restart beat from beginning"
+          >
+            <RotateCcw className="h-4 w-4" />
           </Button>
 
           {/* Volume Control */}

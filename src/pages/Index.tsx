@@ -269,9 +269,15 @@ const Index = () => {
   const handleBackToFeed = () => {
     setShowProfile(false);
     setShowPostDetail(false);
+    setShowChat(false);
+    setShowBeatSwiper(false);
+    setShowNotifications(false);
+    setShowLandingPopup(false);
     setHighlightedPostId(null);
     setViewingUserId(null);
     setViewingUserProfile(null);
+    setBeatSwiperPostId(null);
+    setChatUserId(null);
     // Refresh profile data when going back to feed
     if (user) {
       fetchUserProfile(user.id);

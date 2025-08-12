@@ -288,7 +288,7 @@ export const BeatSwiper = ({ postId, onBack }: BeatSwiperProps) => {
         <Button 
           variant="ghost" 
           onClick={onBack}
-          className="mb-4 hover:bg-muted"
+          className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Post
@@ -325,7 +325,7 @@ export const BeatSwiper = ({ postId, onBack }: BeatSwiperProps) => {
         <Button 
           variant="ghost" 
           onClick={onBack}
-          className="hover:bg-muted"
+          className=""
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Post
