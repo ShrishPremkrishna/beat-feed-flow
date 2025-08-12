@@ -641,7 +641,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
               </SelectContent>
             </Select>
           </div>
-          {replies.slice(0, 3).map((reply, index) => {
+          {replies.slice(0, 1).map((reply, index) => {
             const isReplyOwner = currentUser && currentUser.id === reply.user_id;
             
             return (
@@ -793,7 +793,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
           })}
           
           {/* See More Button */}
-          {replies.length > 3 && (
+          {replies.length > 1 && (
             <div className="text-center pt-4">
               <Button
                 variant="ghost"
@@ -804,7 +804,7 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
                 }}
                 className="text-primary hover:text-primary/80"
               >
-                See More Replies ({replies.length - 3} more)
+                See More Replies ({replies.length - 1} more)
               </Button>
             </div>
           )}

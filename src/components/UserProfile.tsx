@@ -765,7 +765,7 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
         <Button 
           variant="ghost" 
           onClick={onBackToFeed}
-          className="mb-4 hover:bg-muted"
+          className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Feed
@@ -927,8 +927,8 @@ export const UserProfile = ({ user, isOwnProfile, onBackToFeed, onPostClick, use
       {/* Content Tabs */}
       <Tabs defaultValue="posts" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 bg-muted">
-          <TabsTrigger value="posts">My Posts ({userPosts.length})</TabsTrigger>
-          <TabsTrigger value="replies">My Replies ({userReplies.length})</TabsTrigger>
+          <TabsTrigger value="posts">Posts ({userPosts.length})</TabsTrigger>
+          <TabsTrigger value="replies">Replies ({userReplies.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="space-y-6">

@@ -545,7 +545,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
         <Button 
           variant="ghost" 
           onClick={onBack}
-          className="mb-4 hover:bg-muted"
+          className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Feed
@@ -563,7 +563,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
         <Button 
           variant="ghost" 
           onClick={onBack}
-          className="mb-4 hover:bg-muted"
+          className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Feed
@@ -581,7 +581,7 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
       <Button 
         variant="ghost" 
         onClick={onBack}
-        className="mb-4 hover:bg-muted"
+        className="mb-4"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Feed
