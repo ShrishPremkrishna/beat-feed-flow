@@ -352,6 +352,19 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
       return;
     }
 
+    // Optimistic update - immediately update the UI
+    setReplies(prevReplies => 
+      prevReplies.map(reply => 
+        reply.id === replyId 
+          ? { 
+              ...reply, 
+              isLiked: !isCurrentlyLiked,
+              likes: isCurrentlyLiked ? (reply.likes || 0) - 1 : (reply.likes || 0) + 1
+            }
+          : reply
+      )
+    );
+
     try {
       if (isCurrentlyLiked) {
         // Unlike the reply
@@ -374,11 +387,23 @@ export const UserPost = ({ post, onLike, onComment, onShare, onPostClick, onDele
         if (insertError) throw insertError;
       }
       
-      // Reload comments to get accurate like counts from database
-      await loadComments();
+      // No need to reload comments - optimistic update already handled it
     } catch (error) {
-      
       console.error('Error toggling reply like:', error);
+      
+      // Revert optimistic update on error
+      setReplies(prevReplies => 
+        prevReplies.map(reply => 
+          reply.id === replyId 
+            ? { 
+                ...reply, 
+                isLiked: isCurrentlyLiked,
+                likes: isCurrentlyLiked ? (reply.likes || 0) : (reply.likes || 0) - 1
+              }
+            : reply
+        )
+      );
+      
       toast({
         title: 'Error',
         description: 'Failed to toggle like',

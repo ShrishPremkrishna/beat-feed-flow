@@ -76,45 +76,73 @@ export const NotificationsPopup = ({
       
       console.log('Loading notifications for user:', currentUserId);
       
-      // First try a simple query without joins to test basic access
-      const { data: simpleData, error: simpleError } = await supabase
+      // Get notifications first
+      const { data: notificationsData, error: notificationsError } = await supabase
         .from('notifications')
         .select('*')
         .eq('recipient_id', currentUserId)
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (simpleError) {
-        console.error('Simple notifications query error:', simpleError);
-        throw simpleError;
+      if (notificationsError) {
+        console.error('Notifications query error:', notificationsError);
+        throw notificationsError;
       }
 
-      console.log('Simple notifications data:', simpleData);
+      console.log('Notifications data:', notificationsData);
 
-      // If simple query works, try with profile join
-      const { data, error } = await supabase
-        .from('notifications')
-        .select(`
-          *,
-          actor_profile:profiles!actor_id(
-            display_name,
-            username,
-            avatar_url
-          )
-        `)
-        .eq('recipient_id', currentUserId)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) {
-        console.error('Join notifications query error:', error);
-        // Fall back to simple data if join fails
-        setNotifications((simpleData || []) as any);
+      if (!notificationsData || notificationsData.length === 0) {
+        setNotifications([]);
         return;
       }
 
-      console.log('Notifications with profiles:', data);
-      setNotifications((data || []) as any);
+      // Extract unique actor IDs
+      const actorIds = notificationsData
+        .map(n => n.actor_id)
+        .filter(id => id !== null) as string[];
+
+      if (actorIds.length === 0) {
+        setNotifications(notificationsData as any);
+        return;
+      }
+
+      // Fetch profiles for all actors
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username, avatar_url')
+        .in('user_id', actorIds);
+
+      if (profilesError) {
+        console.error('Profiles query error:', profilesError);
+        // Fall back to notifications without profiles
+        setNotifications(notificationsData as any);
+        return;
+      }
+
+      console.log('Profiles data:', profilesData);
+
+      // Create a map of user_id to profile
+      const profilesMap = new Map(
+        profilesData.map(profile => [profile.user_id, profile])
+      );
+
+      // Combine notifications with profiles
+      const notificationsWithProfiles = notificationsData.map(notification => {
+        const actorProfile = notification.actor_id ? profilesMap.get(notification.actor_id) : null;
+        console.log(`Notification ${notification.id}:`, {
+          actor_id: notification.actor_id,
+          actor_profile: actorProfile,
+          avatar_url: actorProfile?.avatar_url,
+          profilesMap_keys: Array.from(profilesMap.keys())
+        });
+        return {
+          ...notification,
+          actor_profile: actorProfile
+        };
+      });
+
+      console.log('Notifications with profiles:', notificationsWithProfiles);
+      setNotifications(notificationsWithProfiles as any);
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {
@@ -255,11 +283,19 @@ export const NotificationsPopup = ({
                 <div className="flex items-start gap-3">
                   {/* Actor Avatar */}
                   <div className="flex-shrink-0">
-                    <InitialsAvatar
-                      name={notification.actor_profile?.display_name || notification.actor_profile?.username || 'User'}
-                      avatarUrl={notification.actor_profile?.avatar_url}
-                      size="sm"
-                    />
+                    {notification.actor_profile ? (
+                      <InitialsAvatar
+                        name={notification.actor_profile.display_name || notification.actor_profile.username || 'User'}
+                        avatarUrl={notification.actor_profile.avatar_url}
+                        size="sm"
+                      />
+                    ) : (
+                      <InitialsAvatar
+                        name="User"
+                        avatarUrl={null}
+                        size="sm"
+                      />
+                    )}
                   </div>
 
                   {/* Content */}
