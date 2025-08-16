@@ -70,11 +70,17 @@ export const InitialsAvatar: React.FC<InitialsAvatarProps> = ({
           alt={displayName}
           className="w-full h-full object-cover"
           onError={(e) => {
-            // If image fails to load, replace with initials
+            // If image fails to load, replace with initials safely
             const target = e.target as HTMLImageElement;
             const parent = target.parentElement;
             if (parent) {
-              parent.innerHTML = `<div class="w-full h-full ${colorClass} flex items-center justify-center text-white font-bold">${initials}</div>`;
+              // Remove the image element
+              target.remove();
+              // Create and append initials div safely
+              const initialsDiv = document.createElement('div');
+              initialsDiv.className = `w-full h-full ${colorClass} flex items-center justify-center text-white font-bold`;
+              initialsDiv.textContent = initials;
+              parent.appendChild(initialsDiv);
             }
           }}
         />

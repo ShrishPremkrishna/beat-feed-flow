@@ -256,7 +256,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
 
   const handleGoogleSignIn = async () => {
     // Rate limiting for Google sign-in attempts
-    if (!rateLimiter.canAttempt('google-signin', 5, 15 * 60 * 1000)) { // 5 attempts per 15 minutes
+    if (!rateLimiter.canAttemptSync('google-signin', 5, 15 * 60 * 1000)) { // 5 attempts per 15 minutes
       const remainingTime = Math.ceil(rateLimiter.getRemainingTime('google-signin', 15 * 60 * 1000) / 1000 / 60);
       toast({
         title: "Too many sign-in attempts",
