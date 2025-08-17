@@ -108,7 +108,7 @@ export const Navbar = ({
             <div className="flex items-center gap-3 group cursor-pointer" onClick={onLogoClick}>
               <div className="p-1 rounded-lg">
                 <img 
-                  src={`${import.meta.env.BASE_URL}PNG image.png`} 
+                  src="/PNG image.png" 
                   alt="Beatify" 
                   className="h-10 w-auto transition-all duration-300 group-hover:scale-110"
                   onError={(e) => {

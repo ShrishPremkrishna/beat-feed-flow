@@ -575,8 +575,8 @@ export const PostDetail = ({ postId, onBack, onUserProfileClick, onSignIn, curre
   };
 
   const handleShare = () => {
-    // Generate the direct link to the post detail view for GitHub Pages (hash routing)
-    const postUrl = `${window.location.origin}${import.meta.env.BASE_URL}#/post/${postId}`;
+    // Generate the direct link to the post detail view
+    const postUrl = `${window.location.origin}/post/${postId}`;
     setShareUrl(postUrl);
     setShowShareModal(true);
   };
