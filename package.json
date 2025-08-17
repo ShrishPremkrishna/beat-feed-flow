@@ -15,6 +15,9 @@
     "predeploy": "vite build",
     "deploy": "gh-pages -d dist"
 <<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> parent of 0719522 (custom domain)
+=======
 >>>>>>> parent of 0719522 (custom domain)
 =======
 >>>>>>> parent of 0719522 (custom domain)

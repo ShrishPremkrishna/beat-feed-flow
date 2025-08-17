@@ -7,6 +7,10 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+  base: mode === 'production' ? '/thats-beatify/' : '/',
+>>>>>>> parent of 0719522 (custom domain)
 =======
   base: mode === 'production' ? '/thats-beatify/' : '/',
 >>>>>>> parent of 0719522 (custom domain)
