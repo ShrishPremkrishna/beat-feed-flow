@@ -5,6 +5,10 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+<<<<<<< HEAD
+=======
+  base: mode === 'production' ? '/thats-beatify/' : '/',
+>>>>>>> parent of 0719522 (custom domain)
   server: {
     host: "::",
     port: 8080,
