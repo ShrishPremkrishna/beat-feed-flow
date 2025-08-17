@@ -8,19 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-<<<<<<< HEAD
     "preview": "vite preview"
-=======
-    "preview": "vite preview",
-    "predeploy": "vite build",
-    "deploy": "gh-pages -d dist"
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> parent of 0719522 (custom domain)
-=======
->>>>>>> parent of 0719522 (custom domain)
-=======
->>>>>>> parent of 0719522 (custom domain)
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
