@@ -1,0 +1,33 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="largeHeadphonesGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#7C3AED;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#EC4899;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#F97316;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FB7185;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Circular background -->
+  <circle cx="40" cy="40" r="40" fill="url(#largeHeadphonesGradient)"/>
+  
+  <!-- Headphones band -->
+  <path d="M16 36 Q40 24 64 36" stroke="white" stroke-width="5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Left earcup -->
+  <circle cx="20" cy="40" r="12" fill="url(#largeHeadphonesGradient)" stroke="white" stroke-width="3"/>
+  
+  <!-- Right earcup -->
+  <circle cx="60" cy="40" r="12" fill="url(#largeHeadphonesGradient)" stroke="white" stroke-width="3"/>
+  
+  <!-- Musical note (eighth note) -->
+  <g transform="translate(40, 40)">
+    <!-- Note head -->
+    <ellipse cx="0" cy="0" rx="4" ry="3" fill="white"/>
+    <!-- Stem -->
+    <rect x="3" y="-16" width="2" height="16" fill="white"/>
+    <!-- Flag -->
+    <path d="M5 -16 Q10 -16 10 -12 Q10 -8 5 -8" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
