@@ -7,6 +7,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   // Custom apex domain => root path
   base: "/",
+  build: { sourcemap: true },
   server: {
     host: "::",
     port: 8080,
