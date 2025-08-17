@@ -64,7 +64,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
     setIsSendingReset(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail.trim(), {
-        redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}#/reset-password`,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {
@@ -188,7 +188,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
         email: signupForm.email.trim(),
         password: signupForm.password,
         options: {
-          emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}#/`,
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             display_name: sanitizedDisplayName,
             username: sanitizedUsername,
@@ -271,7 +271,7 @@ export const AuthModal = ({ isOpen, onClose, onAuth }: AuthModalProps) => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}#/`,
+          redirectTo: `${window.location.origin}`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
