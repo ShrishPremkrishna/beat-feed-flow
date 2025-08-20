@@ -252,6 +252,8 @@ export const PostComposer = ({ onPost, placeholder = "What's on your mind? Share
       const formData = new FormData();
       formData.append('file', beatFile);
 
+      // TODO: Replace with your Railway backend URL after deployment
+      // Example: https://your-project-name.railway.app/analyze-audio
       const response = await fetch('http://localhost:8000/analyze-audio', {
         method: 'POST',
         body: formData,
