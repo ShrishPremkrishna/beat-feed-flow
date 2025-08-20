@@ -346,6 +346,7 @@ const Index = () => {
       setViewingUserProfile(null);
       setShowProfile(true);
       setShowPostDetail(false);
+      setShowChat(false); // Hide chat interface when viewing profile
       setHighlightedPostId(null);
       // Refresh current user's profile data
       await fetchUserProfile(user.id);
@@ -357,6 +358,7 @@ const Index = () => {
         setViewingUserProfile(profile);
         setShowProfile(true);
         setShowPostDetail(false);
+        setShowChat(false); // Hide chat interface when viewing profile
         setHighlightedPostId(null);
       }
     }

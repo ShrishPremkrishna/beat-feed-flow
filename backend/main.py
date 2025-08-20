@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import librosa
 import numpy as np
 import tempfile
 import os
@@ -12,12 +11,27 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Try to import librosa, but provide fallback if it fails
+try:
+    import librosa
+    LIBROSA_AVAILABLE = True
+    logger.info("✅ Librosa successfully imported")
+except ImportError as e:
+    LIBROSA_AVAILABLE = False
+    logger.warning(f"⚠️ Librosa not available: {e}")
+    logger.warning("Audio analysis will use fallback methods")
+
 app = FastAPI(title="Beat Analysis API", version="1.0.0")
 
 # Add CORS middleware to allow requests from your React app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:3000"],  # Add your frontend URLs
+    allow_origins=[
+        "http://localhost:8080", 
+        "http://localhost:3000",
+        "https://thatsbeatify.com",
+        "https://www.thatsbeatify.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,12 +39,21 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Beat Analysis API is running!"}
+    return {"message": "Beat Analysis API is running!", "librosa_available": LIBROSA_AVAILABLE}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy", 
+        "service": "beat-analysis-api",
+        "librosa_available": LIBROSA_AVAILABLE
+    }
 
 @app.post("/analyze-audio")
 async def analyze_audio(file: UploadFile = File(...)):
     """
-    Analyze audio file to detect BPM and musical key using Librosa
+    Analyze audio file to detect BPM and musical key using Librosa or fallback methods
     """
     try:
         # Validate file type
@@ -47,6 +70,10 @@ async def analyze_audio(file: UploadFile = File(...)):
                 raise HTTPException(status_code=400, detail="File too large (max 50MB)")
         
         logger.info(f"Processing audio file: {file.filename}, size: {file_size} bytes")
+        
+        if not LIBROSA_AVAILABLE:
+            logger.warning("Librosa not available, using fallback analysis")
+            return await analyze_audio_fallback(content, file.filename)
         
         # Save to temporary file for librosa processing
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
@@ -128,10 +155,30 @@ async def analyze_audio(file: UploadFile = File(...)):
         logger.error(f"Error analyzing audio: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Audio analysis failed: {str(e)}")
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "beat-analysis-api"}
+async def analyze_audio_fallback(content: bytes, filename: str):
+    """
+    Fallback audio analysis when librosa is not available
+    Returns basic file information and estimated values
+    """
+    logger.info("Using fallback audio analysis")
+    
+    # Basic file analysis without librosa
+    file_size = len(content)
+    
+    # Estimate duration based on file size (very rough approximation)
+    # This is just a placeholder - in production you'd want a better fallback
+    estimated_duration = file_size / (1024 * 1024) * 10  # Rough estimate: 10 seconds per MB
+    
+    # Return basic info with fallback indicators
+    return {
+        "bpm": 120,  # Default BPM
+        "key": "C Major",  # Default key
+        "confidence": 0.3,  # Low confidence for fallback
+        "sample_rate": 44100,  # Standard sample rate
+        "duration": estimated_duration,
+        "analysis_method": "fallback",
+        "note": "Librosa not available - using estimated values"
+    }
 
 if __name__ == "__main__":
     import uvicorn
